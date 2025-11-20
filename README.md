@@ -2,7 +2,7 @@
 PerBrew Coffee Machine Server(FastAPI)
 
 
-#[library's]
+[library's]
 [
     pip install fastapi uvicorn python-dotenv sqlalchemy pydantic python-jose passlib
 ]
