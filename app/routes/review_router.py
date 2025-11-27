@@ -1,5 +1,7 @@
 from fastapi import APIRouter, status, HTTPException
 from app.controller.review_service import ReviewController
+from app.core.auth import get_current_user
+from app.models.user import User
 from schemas.review_schema import (
     ReviewCreate,    # { user_id, recipe_id, rating, comment }
     Review,

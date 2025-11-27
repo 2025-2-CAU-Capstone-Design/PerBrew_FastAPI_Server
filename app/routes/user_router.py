@@ -57,6 +57,8 @@ PUT	/sur/{user_id}/update
 """
 
 from fastapi import APIRouter, HTTPException, status, Depends, Query
+from sqlalchemy.orm import Session
+from app.core.database import get_db
 from controller.users_service import UserController
 from schemas.user_schema import (
     UserSignUp,
@@ -75,15 +77,15 @@ router = APIRouter()
 # 회원가입 / 로그인 / 개인정보 업데이트
 #-----------------------------------
 @router.post("/signup", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-def signup(payload: UserSignUp):
-    created = UserController.signup(payload)
+def signup(payload: UserSignUp, db: Session = Depends(get_db)):
+    created = UserController.signup(db, payload)
     if not created:
         raise HTTPException(status_code=409, detail="email_in_use")
     return created
 
 @router.post("/login", response_model=TokenResponse, status_code=status.HTTP_200_OK)
-def login(payload: UserLogin):
-    token = UserController.login(payload)
+async def login(payload: UserLogin, db: Session = Depends(get_db)):
+    token = UserController.login(db, payload)
     if not token:
         raise HTTPException(status_code=401, detail="invalid_credentials")
     return token
@@ -93,29 +95,29 @@ def login(payload: UserLogin):
 # 개인 정보/ 개인 선호도 조회 및 수정
 #-----------------------------------
 @router.get("/{usr_id}/info", response_model=UserRead, status_code=status.HTTP_200_OK)
-def get_user_info(usr_id: str):
-    user = UserController.get_user_info(usr_id)
+def get_user_info(usr_id: str, db: Session = Depends(get_db)):
+    user = UserController.get_user_info(db, usr_id)
     if not user:
         raise HTTPException(status_code=404, detail="user_not_found")
     return user
 
 @router.patch("/{usr_id}/info", response_model=UserRead, status_code=status.HTTP_200_OK)
-def update_user_info(usr_id: str, payload: UserInfoUpdate):
-    updated = UserController.update_user_info(usr_id, payload)
+def update_user_info(usr_id: str, payload: UserInfoUpdate, db: Session = Depends(get_db)):
+    updated = UserController.update_user_info(db, usr_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="user_not_found")
     return updated
 
 @router.get("/{usr_id}/pref", response_model=UserPreference, status_code=status.HTTP_200_OK)
-def get_user_pref(usr_id: str):
-    pref = UserController.get_user_pref(usr_id)
+def get_user_pref(usr_id: str, db: Session = Depends(get_db)):
+    pref = UserController.get_user_pref(db, usr_id)
     if pref is None:
         raise HTTPException(status_code=404, detail="user_not_found")
     return pref
 
 @router.put("/{usr_id}/pref", response_model=UserPreference, status_code=status.HTTP_200_OK)
-def set_user_pref(usr_id: str, payload: UserPreferenceUpdate):
-    pref = UserController.set_user_pref(usr_id, payload)
+def set_user_pref(usr_id: str, payload: UserPreferenceUpdate, db: Session = Depends(get_db)):
+    pref = UserController.set_user_pref(db, usr_id, payload)
     if pref is None:
         raise HTTPException(status_code=404, detail="user_not_found")
     return pref
@@ -129,8 +131,9 @@ def get_brew_log(
     usr_id: str,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db)
 ):
-    result = UserController.get_brew_log(usr_id, page, page_size)
+    result = UserController.get_brew_log(db, usr_id, page, page_size)
     if result is None:
         raise HTTPException(status_code=404, detail="user_not_found_or_no_logs")
     return result
