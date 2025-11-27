@@ -1,11 +1,11 @@
 # models/__init__.py
-from core.database import Base
-from models.user import User, UserPreference
-from models.bean import CoffeeBean
-from models.recipe import Recipe, PouringStep
-from models.machine import Machine
-from models.brew_log import BrewLog
-from models.review import Review
+from app.core.database import Base
+from app.models.user import User, UserPreference
+from app.models.bean import CoffeeBean
+from app.models.recipe import Recipe, PouringStep
+from app.models.machine import Machine
+from app.models.brew_log import BrewLog
+from app.models.review import Review
 
 __all__ = [
     "Base",

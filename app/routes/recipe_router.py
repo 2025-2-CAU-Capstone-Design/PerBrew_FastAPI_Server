@@ -59,8 +59,8 @@ Example: /recipe/crawling/?url=https://example.com/post	200: { "recipe": { "name
 
 from fastapi import APIRouter, HTTPException, status, Query
 from typing import List, Optional
-from controller.recipe_service import RecipeController
-from schemas.recipe_schema import (
+from app.controller.recipe_service import RecipeController
+from app.schemas.recipe_schema import (
     RecipeCreate,
     RecipeRead,
     RecipeListItem,

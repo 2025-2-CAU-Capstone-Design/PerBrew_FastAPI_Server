@@ -78,8 +78,8 @@ Body (JSON): { "brew_id": "string", "recipe_id": "string", "result": { "tds": nu
 """
 
 from fastapi import APIRouter, HTTPException, status, Query
-from controller.machine_service import MachineController
-from schemas.machine_schema import (
+#from app.controller.machine_service import MachineController
+from app.schemas.machine_schema import (
     BrewRequest,           # { user_id, recipe_id }
     MachineRecipeSend,     # 서버 -> 머신 레시피 송신
     BeanWeight,            # 머신 -> 서버 원두 무게
@@ -96,7 +96,8 @@ router = APIRouter()
 # --------------------------------------------------
 @router.post("/{machine_id}/brew")
 def request_brewing(machine_id: str, payload: BrewRequest):
-    return MachineController.request_brewing(machine_id, payload)
+    return None
+    #return MachineController.request_brewing(machine_id, payload)
 
 
 # --------------------------------------------------
@@ -104,7 +105,8 @@ def request_brewing(machine_id: str, payload: BrewRequest):
 # --------------------------------------------------
 @router.post("/{machine_id}/recipe")
 def send_recipe(machine_id: str, payload: MachineRecipeSend):
-    return MachineController.send_recipe(machine_id, payload)
+    return None
+    #return MachineController.send_recipe(machine_id, payload)
 
 
 # --------------------------------------------------
@@ -112,7 +114,8 @@ def send_recipe(machine_id: str, payload: MachineRecipeSend):
 # --------------------------------------------------
 @router.post("/bean_weight")
 def report_bean_weight(payload: BeanWeight):
-    return MachineController.report_bean_weight(payload)
+    return None
+    #return MachineController.report_bean_weight(payload)
 
 
 # --------------------------------------------------
@@ -120,7 +123,8 @@ def report_bean_weight(payload: BeanWeight):
 # --------------------------------------------------
 @router.post("/bean_weight/app")
 def push_bean_weight(payload: AppBeanWeightPush):
-    return MachineController.push_bean_weight(payload)
+    return None
+    #return MachineController.push_bean_weight(payload)
 
 
 # --------------------------------------------------
@@ -128,7 +132,8 @@ def push_bean_weight(payload: AppBeanWeightPush):
 # --------------------------------------------------
 @router.get("/{machine_id}/brewing-status")
 def brewing_status(machine_id: str, brew_id: str | None = None):
-    return MachineController.brewing_status(machine_id, brew_id)
+    return None
+    #return MachineController.brewing_status(machine_id, brew_id)
 
 
 # --------------------------------------------------
@@ -136,7 +141,8 @@ def brewing_status(machine_id: str, brew_id: str | None = None):
 # --------------------------------------------------
 @router.post("/{machine_id}/stop")
 def stop_brewing(machine_id: str):
-    return MachineController.stop_brewing(machine_id)
+    return None
+    #return MachineController.stop_brewing(machine_id)
 
 
 # --------------------------------------------------
@@ -144,7 +150,8 @@ def stop_brewing(machine_id: str):
 # --------------------------------------------------
 @router.post("/{user_id}/{machine_id}")
 def register_machine(user_id: str, machine_id: str, payload: MachineRegisterSchema):
-    return MachineController.register_machine(user_id, machine_id, payload)
+    return None
+    #return MachineController.register_machine(user_id, machine_id, payload)
 
 
 # --------------------------------------------------
@@ -152,4 +159,5 @@ def register_machine(user_id: str, machine_id: str, payload: MachineRegisterSche
 # --------------------------------------------------
 @router.post("/usr/{usr_id}/log")
 def create_brew_log(usr_id: str, payload: MachineBrewLog):
-    return MachineController.create_brew_log(usr_id, payload)
+    return None
+    #return MachineController.create_brew_log(usr_id, payload)

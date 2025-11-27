@@ -2,7 +2,7 @@
 from sqlalchemy import Column, Integer, String, Text, Date, DateTime, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from core.database import Base
+from app.core.database import Base
 
 class CoffeeBean(Base):
     __tablename__ = "coffee_beans"

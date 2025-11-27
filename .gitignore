@@ -1,2 +1,6 @@
 server/
 .env
+.db
+.pyc
+__pycache__/
+.vscode/

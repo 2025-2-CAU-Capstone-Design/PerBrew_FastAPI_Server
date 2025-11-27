@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Query, WebSocket
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from controller.users_service import UserController
+from app.controller.users_service import UserController
 
-from schemas.user_schema import (
+from app.schemas.user_schema import (
     UserSignUp,
     UserLogin,
     UserInfoUpdate,
@@ -13,7 +13,7 @@ from schemas.user_schema import (
     TokenResponse,
     PaginatedBrewLogs,
 )
-from schemas.machine_schema import (
+from app.schemas.machine_schema import (
     BrewRequest,
     PouringStep,
     MachineRecipeSend,

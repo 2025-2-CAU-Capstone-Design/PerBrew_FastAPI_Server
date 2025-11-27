@@ -2,7 +2,7 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, Text, DateTime, ForeignKey, Enum
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from core.database import Base
+from app.core.database import Base
 import enum
 
 class Recipe(Base):

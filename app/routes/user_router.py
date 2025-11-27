@@ -59,8 +59,8 @@ PUT	/sur/{user_id}/update
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from controller.users_service import UserController
-from schemas.user_schema import (
+from app.controller.users_service import UserController
+from app.schemas.user_schema import (
     UserSignUp,
     UserLogin,
     UserInfoUpdate,
