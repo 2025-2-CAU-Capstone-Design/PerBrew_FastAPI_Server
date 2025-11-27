@@ -6,7 +6,7 @@ from app.routes.bean_router  import router as bean_router
 from app.routes.recipe_router import router as recipe_router
 from app.routes.review_router import router as review_router
 from app.routes.machine_router import router as machine_router
-from app.routes.ws_router import ws_router
+from app.routes.ws_router import router as ws_router
 
 
 @asynccontextmanager
@@ -29,7 +29,7 @@ app.include_router(machine_router, prefix="/machine", tags=["Machine"])
 app.include_router(bean_router, prefix="/bean", tags=["Bean"])
 app.include_router(review_router, prefix="/review", tags=["Review"])
 app.include_router(ws_router, prefix="/ws", tags=["WebSocket"])
-    
+
 @app.get("/")
 async def root():
     return {"status": "Coffee Machine API Running"}
