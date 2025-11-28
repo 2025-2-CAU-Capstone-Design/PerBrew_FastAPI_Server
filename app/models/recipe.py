@@ -45,7 +45,6 @@ class Recipe(Base):
     bean = relationship("CoffeeBean", back_populates="recipes")
     pouring_steps = relationship("PouringStep", back_populates="recipe", cascade="all, delete-orphan", order_by="PouringStep.step_number")
     brew_logs = relationship("BrewLog", back_populates="recipe")
-    reviews = relationship("Review", back_populates="recipe")
     
     def __repr__(self):
         return f"<Recipe(recipe_id={self.recipe_id}, name={self.recipe_name})>"

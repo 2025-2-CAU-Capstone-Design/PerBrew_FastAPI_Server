@@ -22,9 +22,8 @@ class User(Base):
     # Relationships
     preference = relationship("UserPreference", back_populates="user", uselist=False, cascade="all, delete-orphan")
     recipes = relationship("Recipe", back_populates="owner", cascade="all, delete-orphan")
-    devices = relationship("Device", back_populates="user", cascade="all, delete-orphan")
+    machines = relationship("Machine", back_populates="user", cascade="all, delete-orphan")
     brew_logs = relationship("BrewLog", back_populates="user", cascade="all, delete-orphan")
-    reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User(user_id={self.user_id}, email={self.email})>"
