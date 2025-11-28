@@ -5,7 +5,7 @@ from app.models.bean import CoffeeBean
 from app.models.recipe import Recipe, PouringStep
 from app.models.machine import Machine
 from app.models.brew_log import BrewLog
-from app.models.review import Review
+#from app.models.review import Review
 
 __all__ = [
     "Base",
@@ -16,5 +16,5 @@ __all__ = [
     "PouringStep",
     "Machine",
     "BrewLog",
-    "Review",
+#    "Review",
 ]

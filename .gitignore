@@ -4,3 +4,6 @@ server/
 .pyc
 __pycache__/
 .vscode/
+test_front/
+PerBrew.db
+.lock
