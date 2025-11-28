@@ -1,76 +1,8 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from enum import Enum
+from datetime import datetime
 
-# 1) App -> Server : 브루잉 요청
-# { "user_id": "string", "recipe_id": "string" }
-class BrewRequest(BaseModel):
-    user_id: str
-    recipe_id: str
-
-
-# 2) Server -> Machine : 레시피 송신
-class PouringStep(BaseModel):
-    step_no: int
-    water_g: float
-    pour_time_s: int
-    technique: str   # center | spiral_out | pulse
-
-
-class MachineRecipeSend(BaseModel):
-    recipe_id: str
-    water_temperature_c: float
-    dose_g: float
-    grind_level: str
-    pouring_steps: List[PouringStep]
-
-
-# 3) Machine -> Server : 원두 무게 송신
-class BeanWeight(BaseModel):
-    machine_id: str
-    bean_weight_g: float
-
-
-# 4) Server -> App : 원두 무게 Push
-class AppBeanWeightPush(BaseModel):
-    bean_weight_g: float
-    timestamp: str   # ISO-8601
-
-
-# 5) Machine Registration (machine -> server)
-# Path: /machine/{user_id}/{machine_id}
-# Body: { "nickname": "string|null" }
-class MachineRegisterSchema(BaseModel):
-    nickname: Optional[str] = None
-
-
-# 6) Machine -> Server : Create Brew Log
-class BrewResult(BaseModel):
-    tds: Optional[float] = None
-    temperature_c: Optional[float] = None
-    notes: Optional[str] = None
-
-
-class MachineBrewLog(BaseModel):
-    brew_id: str
-    recipe_id: str
-    result: BrewResult
-
-
-
-# Response Schemas
-class BrewAccepted(BaseModel):
-    status: str  # "accepted"
-    machine_id: str
-    brew_id: str
-
-class RecipeStarted(BaseModel):
-    status: str  # "started"
-    machine_id: str
-    brew_id: str
-
-class OkResponse(BaseModel):
-    status: str = "ok"
 
 class BrewPhase(str, Enum):
     idle = "idle"
@@ -80,25 +12,118 @@ class BrewPhase(str, Enum):
     done = "done"
     error = "error"
 
+
+# 1) App -> Server
+class BrewRequest(BaseModel):
+    user_id: str
+    recipe_id: int
+
+
+# 2) Server -> Machine  
+# Recipe 전송용 schema
+class MachinePouringStep(BaseModel):
+    step_number: int
+    water_g: float
+    pour_time_s: float
+    wait_time_s: Optional[float] = None
+    bloom_time_s: Optional[float] = None
+    technique: Optional[str] = None
+
+
+class MachineRecipeSend(BaseModel):
+    recipe_id: int
+    water_temperature_c: float
+    dose_g: float
+    total_water_g: Optional[float] = None
+    grind_level: Optional[str] = None
+    rinsing: bool = False
+    pouring_steps: List[MachinePouringStep]
+
+
+# 3) Machine -> Server
+class BeanWeight(BaseModel):
+    machine_id: str
+    bean_weight_g: float
+
+
+class AppBeanWeightPush(BaseModel):
+    bean_weight_g: float
+    timestamp: datetime
+
+
+# 5) Machine Registration
+class MachineRegisterSchema(BaseModel):
+    nickname: Optional[str] = None
+    ip_address: Optional[str] = None
+    firmware_version: Optional[str] = None
+
+
+class MachineRead(BaseModel):
+    machine_id: str
+    user_id: str
+    nickname: Optional[str]
+    ip_address: Optional[str]
+    current_phase: BrewPhase
+    last_brew_id: Optional[str]
+    is_active: bool
+    firmware_version: Optional[str]
+    registered_at: datetime
+    last_seen_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
+# 6) Brew Log 생성
+class BrewResult(BaseModel):
+    tds: Optional[float] = None
+    temperature_c: Optional[float] = None
+    notes: Optional[str] = None
+
+
+class MachineBrewLog(BaseModel):
+    brew_id: str
+    recipe_id: Optional[int] = None
+    bean_id: Optional[int] = None
+    machine_id: Optional[str] = None
+    result: BrewResult
+
+
+# Response
+class BrewAccepted(BaseModel):
+    status: str
+    machine_id: str
+    brew_id: str
+
+
+class RecipeStarted(BaseModel):
+    status: str
+    machine_id: str
+    brew_id: str
+
+
 class BrewingStatusResponse(BaseModel):
     brew_id: str
     phase: BrewPhase
-    step_no: Optional[int] = None
+    step_number: Optional[int]
     elapsed_s: int
-    temperature_c: Optional[float] = None
-    tds: Optional[float] = None
+    temperature_c: Optional[float]
+    tds: Optional[float]
     progress_pct: int
 
+
 class BrewingStoppedResponse(BaseModel):
-    status: str  # "stopped"
+    status: str
     machine_id: str
     brew_id: str
+
 
 class RegistrationResponse(BaseModel):
     user_id: str
     machine_id: str
-    status: str  # "registered"
+    status: str
+
 
 class LogCreatedResponse(BaseModel):
-    status: str  # "logged"
-    log_id: str
+    status: str
+    log_id: int
