@@ -1,6 +1,10 @@
 from fastapi import APIRouter
 #from app.controller.bean_service import BeanController
-from app.schemas.bean_schema import BeanRegister
+from app.schemas.bean_schema import (
+    BeanCreate,
+    BeanUpdate,
+    BeanRead,
+)
 
 router = APIRouter()
 
@@ -8,7 +12,7 @@ router = APIRouter()
 # Bean Registration
 #-----------------------------------
 @router.post("/register")
-def register_bean(payload: BeanRegister):
+def register_bean(payload: BeanCreate):
     return None
     #return BeanController.register_bean(payload)
 
