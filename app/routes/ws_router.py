@@ -1,52 +1,41 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Query, WebSocket
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.controller.users_service import UserController
-
-from app.schemas.user_schema import (
-    UserSignUp,
-    UserLogin,
-    UserInfoUpdate,
-    UserPreferenceUpdate,
-    UserPreference,
-    UserRead,
-    TokenResponse,
-    PaginatedBrewLogs,
-)
-from app.schemas.machine_schema import (
-    BrewRequest,
-    PouringStep,
-    MachineRecipeSend,
-    BeanWeight,
-    AppBeanWeightPush,
-    MachineRegisterSchema,
-    BrewResult,
-    MachineBrewLog,
-    BrewAccepted,
-    RecipeStarted,
-    OkResponse,
-    BrewPhase,
-    BrewingStatusResponse,
-    BrewingStoppedResponse,
-    RegistrationResponse,
-    LogCreatedResponse
-)
+from app.controller.ws_service import ws_manager
+import json
 
 router = APIRouter()
 
-# @ws_router -> @router 로 변경해야 함
-@router.websocket("/brewing/{usr_id}/{machine_id}")
-async def brewing_websocket(websocket: WebSocket, machine_id: str, usr_id: str, db: Session = Depends(get_db)):
-    await websocket.accept()
+# [Machine] 커피 머신 연결
+@router.websocket("/machine/{machine_id}")
+async def websocket_machine_endpoint(websocket: WebSocket, machine_id: str, db: Session = Depends(get_db)):
+    await ws_manager.connect_machine(machine_id, websocket)
     try:
         while True:
             data = await websocket.receive_json()
-            print(f"Received from {machine_id} (User: {usr_id}): {data}")
+            # 비즈니스 로직은 서비스 계층으로 위임
+            await ws_manager.process_machine_message(machine_id, data)
             
-            # 에코 응답 (테스트용)
-            await websocket.send_json({"status": "received", "data": data})
+    except WebSocketDisconnect:
+        ws_manager.disconnect_machine(machine_id)
+    except json.JSONDecodeError:
+        print(f"[WS Error] Machine {machine_id} sent non-JSON data")
     except Exception as e:
-        print(f"WebSocket Error: {e}")
-    finally:
-        # 연결 종료 처리 등
-        await websocket.close()
+        print(f"[WS Error] Machine {machine_id}: {e}")
+        ws_manager.disconnect_machine(machine_id)
+
+
+# [App] 앱 연결
+@router.websocket("/app/{machine_id}/{user_id}")
+async def websocket_app_endpoint(websocket: WebSocket, machine_id: str, user_id: str, db: Session = Depends(get_db)):
+    await ws_manager.connect_app(machine_id, websocket)
+    try:
+        while True:
+            # 앱은 주로 수신만 하지만, 혹시 보낸다면 무시하거나 핑퐁 처리
+            _ = await websocket.receive_json()
+            
+    except WebSocketDisconnect:
+        ws_manager.disconnect_app(machine_id, websocket)
+    except Exception as e:
+        print(f"[WS Error] App {user_id}: {e}")
+        ws_manager.disconnect_app(machine_id, websocket)

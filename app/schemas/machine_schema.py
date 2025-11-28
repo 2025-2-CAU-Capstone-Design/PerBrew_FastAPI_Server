@@ -30,15 +30,6 @@ class MachinePouringStep(BaseModel):
     technique: Optional[str] = None
 
 
-class MachineRecipeSend(BaseModel):
-    recipe_id: int
-    water_temperature_c: float
-    dose_g: float
-    total_water_g: Optional[float] = None
-    grind_level: Optional[str] = None
-    rinsing: bool = False
-    pouring_steps: List[MachinePouringStep]
-
 
 # 3) Machine -> Server
 class BeanWeight(BaseModel):

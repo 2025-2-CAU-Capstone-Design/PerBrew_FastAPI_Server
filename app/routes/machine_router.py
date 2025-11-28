@@ -76,88 +76,54 @@ Body (JSON): { "brew_id": "string", "recipe_id": "string", "result": { "tds": nu
 400: { "error": "invalid_body", "message": "..." }
 
 """
-
+from sqlalchemy.orm import Session
 from fastapi import APIRouter, HTTPException, status, Query
-#from app.controller.machine_service import MachineController
+from app.controller.machine_service import MachineController
+from app.core.database import get_db
+from fastapi import Depends
 from app.schemas.machine_schema import (
     BrewRequest,           # { user_id, recipe_id }
-    MachineRecipeSend,     # 서버 -> 머신 레시피 송신
-    BeanWeight,            # 머신 -> 서버 원두 무게
-    AppBeanWeightPush,     # 서버 -> 앱 원두 무게 전달
     MachineRegisterSchema, # 머신 등록
     MachineBrewLog         # 머신 결과 로그
 )
 
 router = APIRouter()
 
-
-# --------------------------------------------------
-# App -> Server : 브루잉 요청(Request Brewing)
-# --------------------------------------------------
-@router.post("/{machine_id}/brew")
-def request_brewing(machine_id: str, payload: BrewRequest):
-    return None
-    #return MachineController.request_brewing(machine_id, payload)
-
-
-# --------------------------------------------------
-# Server -> Machine : 레시피 송신 및 브루잉 시작
-# --------------------------------------------------
-@router.post("/{machine_id}/recipe")
-def send_recipe(machine_id: str, payload: MachineRecipeSend):
-    return None
-    #return MachineController.send_recipe(machine_id, payload)
+# 1) Machine Registration
+@router.post("/{user_id}/{machine_id}/register")
+async def regist_machine( 
+    user_id: str, 
+    machine_id: str, 
+    payload: MachineRegisterSchema,
+    db: Session = Depends(get_db)
+):
+    result = await MachineController.regist_machine(db, user_id, machine_id, payload)
+    return result
 
 
-# --------------------------------------------------
-# Machine -> Server : 원두 무게 송신
-# --------------------------------------------------
-@router.post("/bean_weight")
-def report_bean_weight(payload: BeanWeight):
-    return None
-    #return MachineController.report_bean_weight(payload)
+# 2) 레시피 전송 및 준비 -> ESP32로 레시피 전송 및 무게 측정 모드로 진입
+@router.post("/{machine_id}/prepare")
+async def prepare_brewing(
+    machine_id: str, 
+    payload: BrewRequest, 
+    db: Session = Depends(get_db)
+):
+    return await MachineController.send_brewing_recipe(db, machine_id, payload)
 
 
-# --------------------------------------------------
-# Server -> App : 원두 무게 전달(push)
-# --------------------------------------------------
-@router.post("/bean_weight/app")
-def push_bean_weight(payload: AppBeanWeightPush):
-    return None
-    #return MachineController.push_bean_weight(payload)
+@router.post("/{machine_id}/start")
+async def start_brewing(machine_id: str):
+    return await MachineController.send_brewing_request(machine_id)
 
 
-# --------------------------------------------------
-# Machine -> Server : 브루잉 상태 조회
-# --------------------------------------------------
-@router.get("/{machine_id}/brewing-status")
-def brewing_status(machine_id: str, brew_id: str | None = None):
-    return None
-    #return MachineController.brewing_status(machine_id, brew_id)
-
-
-# --------------------------------------------------
-# Server -> Machine : 브루잉 중단
-# --------------------------------------------------
 @router.post("/{machine_id}/stop")
-def stop_brewing(machine_id: str):
-    return None
-    #return MachineController.stop_brewing(machine_id)
+async def stop_brewing(machine_id: str):
+    return await MachineController.stop_brewing(machine_id)
 
-
-# --------------------------------------------------
-# Machine -> Server : 머신 등록
-# --------------------------------------------------
-@router.post("/{user_id}/{machine_id}")
-def register_machine(user_id: str, machine_id: str, payload: MachineRegisterSchema):
-    return None
-    #return MachineController.register_machine(user_id, machine_id, payload)
-
-
-# --------------------------------------------------
-# Machine -> Server : 브루잉 결과 로그 저장
-# --------------------------------------------------
 @router.post("/usr/{usr_id}/log")
-def create_brew_log(usr_id: str, payload: MachineBrewLog):
-    return None
-    #return MachineController.create_brew_log(usr_id, payload)
+async def create_brew_log(
+    usr_id: str, 
+    payload: MachineBrewLog, 
+    db: Session = Depends(get_db)
+):
+    return await MachineController.create_brew_log(db, usr_id, payload)
