@@ -57,8 +57,12 @@ Example: /recipe/crawling/?url=https://example.com/post	200: { "recipe": { "name
 """
 
 
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, Depends
 from typing import List, Optional
+from sqlalchemy.orm import Session
+from app.core.database import get_db
+from app.core.auth import get_current_user
+from app.models.user import User
 from app.controller.recipe_service import RecipeController
 from app.schemas.recipe_schema import (
     RecipeCreate,
@@ -67,44 +71,59 @@ from app.schemas.recipe_schema import (
     RecipeUpdate,
     PaginatedRecipes,
 )
+
 router = APIRouter()
 
-# Recipe Registration
+# 레시피 생성
 @router.post("/", response_model=RecipeRead, status_code=status.HTTP_201_CREATED)
-def create_recipe(payload: RecipeCreate):
-    created = RecipeController.register_recipe(payload)
+def create_recipe(
+    payload: RecipeCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    created = RecipeController.register_recipe(db, payload, current_user)
     if not created:
         raise HTTPException(status_code=500, detail="failed_to_create_recipe")
     return created
 
-# Recipe Detail
+# 레시피 목록 조회
 @router.get("/", response_model=PaginatedRecipes, status_code=status.HTTP_200_OK)
-def list_recipes( page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100), bean_id: Optional[int] = Query(None) ):
-    result = RecipeController.recipe_list(page, page_size, bean_id)
+def list_recipes(
+    page: int = Query(1, ge=1), 
+    page_size: int = Query(20, ge=1, le=100), 
+    bean_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db)
+):
+    result = RecipeController.recipe_list(db, page, page_size, bean_id)
     if result is None:
         raise HTTPException(status_code=500, detail="failed_to_fetch_recipes")
     return result
 
 
-# Recipe List
+# 레시피 상세 조회
 @router.get("/{recipe_id}", response_model=RecipeRead, status_code=status.HTTP_200_OK)
-def get_recipe(recipe_id: int):
-    recipe = RecipeController.recipe_detail(recipe_id)
+def get_recipe(recipe_id: int, db: Session = Depends(get_db)):
+    recipe = RecipeController.recipe_detail(db, recipe_id)
     if not recipe:
         raise HTTPException(status_code=404, detail="recipe_not_found")
     return recipe
 
 
-# Recipe Update
+# 레시피 편집
 @router.patch("/{recipe_id}", response_model=RecipeRead, status_code=status.HTTP_200_OK)
-def update_recipe(recipe_id: int, payload: RecipeUpdate):
-    updated = RecipeController.update_recipe(recipe_id, payload)
+def update_recipe(
+    recipe_id: int, 
+    payload: RecipeUpdate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    updated = RecipeController.update_recipe(db, recipe_id, payload, current_user)
     if not updated:
         raise HTTPException(status_code=404, detail="recipe_not_found")
     return updated
 
 
-# Crawled Recipe
+# 레시피 크롤링
 @router.get("/crawl", response_model=RecipeRead, status_code=status.HTTP_200_OK)
 def crawl_recipe(url: str = Query(..., description="URL to crawl")):
     data = RecipeController.crawl_recipe(url)
@@ -113,16 +132,27 @@ def crawl_recipe(url: str = Query(..., description="URL to crawl")):
     return data
 
 
-# Recipe Recommendation
+# 추천 레시피 목록
 @router.get("/recommend/{user_id}", response_model=List[RecipeListItem], status_code=status.HTTP_200_OK)
-def recommend_recipes(user_id: int, limit: int = Query(10, ge=1, le=100)):
-    items = RecipeController.recommend_recipe(user_id, limit)
+def recommend_recipes(
+    user_id: str, 
+    limit: int = Query(10, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    items = RecipeController.recommend_recipe(db, user_id, limit)
     return items
 
-# Recipe Generated List
+# 생성된 레시피 목록
 @router.get("/generated/{user_id}", response_model=PaginatedRecipes, status_code=status.HTTP_200_OK)
-def generated_recipes(user_id: int, page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100)):
-    result = RecipeController.generated_recipes(user_id, page, page_size)
+def generated_recipes(
+    user_id: str, 
+    page: int = Query(1, ge=1), 
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    result = RecipeController.generated_recipes(db, user_id, page, page_size)
     if result is None:
         raise HTTPException(status_code=404, detail="no_generated_recipes")
     return result

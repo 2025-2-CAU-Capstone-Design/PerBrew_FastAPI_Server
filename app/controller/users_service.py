@@ -11,15 +11,15 @@ from app.core.config import settings
 
 class UserController:
     @staticmethod
-    def signup(db: Session, payload: UserSignUp) -> User | None:
+    def signup(db: Session, payload: UserSignUp):
         check_user = db.query(User).filter(User.email == payload.email).first()
         if check_user:
             return 
-        
+        hashed_password = get_password_hash(payload.password)
         new_user = User(
             email=payload.email,
             username = payload.username,
-            hashed_password = get_password_hash(payload.password)
+            password_hash = hashed_password
         )
 
         db.add(new_user)
@@ -30,15 +30,15 @@ class UserController:
     @staticmethod
     def login(db: Session, payload: UserLogin):
         user = db.query(User).filter(User.email == payload.email).first()
-        if not user or not verify_password(payload.password, user.hashed_password):
+        if not user or not verify_password(payload.password, user.password_hash):
             return None
         
         access_token = create_access_token(data={"sub": user.email, "user_id": user.user_id})
 
         return {
             "user": user,
-            "token": access_token,
-            "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+            "access_token": access_token,
+            "expires_in_s": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
         }
     
     @staticmethod
@@ -58,7 +58,7 @@ class UserController:
         if payload.email is not None:
             user.email = payload.email
         if payload.password is not None:
-            user.hashed_password = get_password_hash(payload.password)
+            user.password_hash = get_password_hash(payload.password)
             
         db.commit()
         db.refresh(user)
