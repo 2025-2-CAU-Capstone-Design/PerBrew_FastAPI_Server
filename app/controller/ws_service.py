@@ -65,12 +65,12 @@ class ConnectionManager:
             print(f"[WS] Status from {machine_id}: {data}")
         elif msg_type == "BREW_DONE":
             print(f"[WS] Brewing Done: {machine_id}")
-            # TODO: 여기서 DB 저장 서비스 호출 가능 (비동기)
         else:
             print(f"[WS] Unknown msg from {machine_id}: {data}")
 
         # 2. 앱들에게 브로드캐스트 (Relay)
         await self.broadcast_to_apps(machine_id, data)
+        return msg_type
 
     # 앱 -> 머신 명령 전달
     async def send_command_to_machine(self, machine_id: str, message: dict):

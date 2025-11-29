@@ -99,7 +99,8 @@ class MachineController:
     # 브루잉 시작 요청
     @staticmethod
     async def send_brewing_request(user: User, machine_id: str):
-        if machine_id not in ws_manager.active_machines or ws_manager.active_connections[machine_id]["machine"] is None:
+        if (machine_id not in ws_manager.active_connections 
+            or ws_manager.active_connections[machine_id]["machine"] is None):
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, 
                 detail="machine_not_connected"
@@ -133,3 +134,4 @@ class MachineController:
         db.add(new_log)
         db.commit()
         return {"status": "logged", "log_id": str(new_log.id)}
+    

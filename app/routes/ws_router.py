@@ -1,23 +1,34 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, status
 from sqlalchemy.orm import Session
 from jose import jwt, JWTError
+
 from app.core.database import get_db
 from app.controller.ws_service import ws_manager
 from app.core.config import settings
 from app.models.user import User
+from app.models.machine import Machine
+from app.controller.machine_service import MachineController
+from app.schemas.machine_schema import MachineBrewLog
+
 import json
 
 router = APIRouter()
 
 # [Machine] 커피 머신 연결
 @router.websocket("/machine/{machine_id}")
-async def websocket_machine_endpoint(websocket: WebSocket, machine_id: str, db: Session = Depends(get_db)):
+async def websocket_machine_endpoint(
+        websocket: WebSocket, 
+        machine_id: str, 
+        db: Session = Depends(get_db)
+    ):
     await ws_manager.connect_machine(machine_id, websocket)
     try:
         while True:
             data = await websocket.receive_json()
             # 비즈니스 로직은 서비스 계층으로 위임
-            await ws_manager.process_machine_message(machine_id, data)
+            msg_type = await ws_manager.process_machine_message(machine_id, data)
+            if msg_type == "BREW_DONE":
+                await handle_brew_done(machine_id, data, db)
             
     except WebSocketDisconnect:
         ws_manager.disconnect_machine(machine_id)
@@ -48,8 +59,6 @@ async def websocket_app_endpoint(
         if user is None:
             await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
             return
-            
-        # 로깅용 사용자 식별자
         user_identifier = email
 
     except JWTError:
@@ -67,3 +76,33 @@ async def websocket_app_endpoint(
     except Exception as e:
         print(f"[WS Error] App {user_identifier}: {e}")
         ws_manager.disconnect_app(machine_id, websocket)
+
+
+async def handle_brew_done(machine_id: str, data: dict, db: Session):
+    # 1. 머신 소유자 찾기
+    machine = db.query(Machine).filter(Machine.machine_id == machine_id).first()
+    if not machine:
+        print(f"[WS] BREW_DONE but machine row not found: {machine_id}")
+        return
+
+    user = db.query(User).get(machine.user_id)
+    if not user:
+        print(f"[WS] BREW_DONE but user not found: machine_id={machine_id}")
+        return
+
+    brew_log_payload = MachineBrewLog(
+        recipe_id=data["recipe_id"],
+        machine_id=machine_id,
+        result=data["result"],
+    )
+
+    log_result = await MachineController.create_brew_log(db, user, brew_log_payload)
+
+    await ws_manager.broadcast_to_apps(
+        machine_id,
+        {
+            "type": "BREW_LOG_CREATED",
+            "machine_id": machine_id,
+            "log": log_result,
+        },
+    )
