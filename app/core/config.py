@@ -10,5 +10,6 @@ class Settings(BaseSettings):
     DATABASE_FILE: str = os.getenv("DATABASE_FILE")
     DATABASE_URL: str = os.getenv("DATABASE_URL")    
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))*24
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
 
 settings = Settings()
