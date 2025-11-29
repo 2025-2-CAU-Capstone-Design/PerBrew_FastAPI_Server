@@ -17,7 +17,7 @@ Body (JSON): { "email": "string", "password": "string", "name": "string" }	201: 
 
 
 Personal Info Registration	개인 선호도 등록	
-POST	/usr/{usr_id}/info	
+POST	/usr/me/info	
 App	to Server	
 Headers: Authorization: Bearer <token>, Content-Type: application/json
 Path params: usr_id string
@@ -26,7 +26,7 @@ Body (JSON): { "taste": { "acidity": 1-5, "sweetness": 1-5, "bitterness": 1-5, "
 
 
 Personal Info update	개인 선호도 수정	
-PATCH	/usr/{usr_id}/info	App	Server	Headers: Authorization: Bearer <token>, Content-Type: application/json
+PATCH	/usr/me/info	App	Server	Headers: Authorization: Bearer <token>, Content-Type: application/json
 App	to Server	
 Headers: Authorization: Bearer <token>, Content-Type: application/json
 Path params: usr_id string
@@ -35,7 +35,7 @@ Body (JSON): { "taste": { "acidity": 1-5, "sweetness": 1-5, "bitterness": 1-5, "
 
 
 Get personal info	개인 선호도 확인	
-GET	/usr/{usr_id}/info	
+GET	/usr/me/info	
 App	to Server	
 Headers: Authorization: Bearer <token>
 Path params: usr_id string	200: { "usr_id": "string", "taste": { "acidity": 1-5, "sweetness": 1-5, "bitterness": 1-5, "body": 1-5 }, "preferred_temperature_c": number|null, "grind_level": "string|null" }
@@ -43,7 +43,7 @@ Path params: usr_id string	200: { "usr_id": "string", "taste": { "acidity": 1-5,
 
 
 Get log Viewer	사용자 브루잉 로그 목록 조회	
-GET	/usr/{usr_id}/log	
+GET	/usr/me/log	
 App to Server	
 Headers: Authorization: Bearer <token>
 Path params: usr_id string
@@ -59,6 +59,8 @@ PUT	/sur/{user_id}/update
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.auth import get_current_user  # auth 모듈에서 get_current_user 가져오기
+from app.models.user import User  # User 모델 가져오기 (타입 힌팅용)
 from app.controller.users_service import UserController
 from app.schemas.user_schema import (
     UserSignUp,
@@ -70,7 +72,6 @@ from app.schemas.user_schema import (
     TokenResponse,
     PaginatedBrewLogs,
 )
-
 router = APIRouter()
 
 #-----------------------------------
@@ -94,30 +95,44 @@ async def login(payload: UserLogin, db: Session = Depends(get_db)):
 #-----------------------------------
 # 개인 정보/ 개인 선호도 조회 및 수정
 #-----------------------------------
-@router.get("/{usr_id}/info", response_model=UserRead, status_code=status.HTTP_200_OK)
-def get_user_info(usr_id: str, db: Session = Depends(get_db)):
-    user = UserController.get_user_info(db, usr_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="user_not_found")
-    return user
+@router.get("/me/info", response_model=UserRead, status_code=status.HTTP_200_OK)
+def get_user_info(
+    db: Session = Depends(get_db), 
+    current_user: User = Depends(get_current_user)
+):
+    return current_user
 
-@router.patch("/{usr_id}/info", response_model=UserRead, status_code=status.HTTP_200_OK)
-def update_user_info(usr_id: str, payload: UserInfoUpdate, db: Session = Depends(get_db)):
-    updated = UserController.update_user_info(db, usr_id, payload)
+
+
+@router.patch("/me/info", response_model=UserRead, status_code=status.HTTP_200_OK)
+def update_user_info(
+    payload: UserInfoUpdate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    updated = UserController.update_user_info(db, current_user.user_id, payload)
     if not updated:
         raise HTTPException(status_code=404, detail="user_not_found")
     return updated
 
-@router.get("/{usr_id}/pref", response_model=UserPreference, status_code=status.HTTP_200_OK)
-def get_user_pref(usr_id: str, db: Session = Depends(get_db)):
-    pref = UserController.get_user_pref(db, usr_id)
-    if pref is None:
-        raise HTTPException(status_code=404, detail="user_not_found")
-    return pref
 
-@router.put("/{usr_id}/pref", response_model=UserPreference, status_code=status.HTTP_200_OK)
-def set_user_pref(usr_id: str, payload: UserPreferenceUpdate, db: Session = Depends(get_db)):
-    pref = UserController.set_user_pref(db, usr_id, payload)
+
+@router.get("/me/pref", response_model=UserPreference, status_code=status.HTTP_200_OK)
+def get_user_pref(
+    current_user: User = Depends(get_current_user)
+):
+    # DB 세션 불필요, current_user 전달
+    return UserController.get_user_pref(current_user)
+
+
+
+@router.put("/me/pref", response_model=UserPreference, status_code=status.HTTP_200_OK)
+def set_user_pref(
+    payload: UserPreferenceUpdate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    pref = UserController.set_user_pref(db, current_user, payload)
     if pref is None:
         raise HTTPException(status_code=404, detail="user_not_found")
     return pref
@@ -126,14 +141,14 @@ def set_user_pref(usr_id: str, payload: UserPreferenceUpdate, db: Session = Depe
 #-----------------------------------
 # 사용자 브루잉 로그 목록 조회
 #-----------------------------------
-@router.get("/{usr_id}/brew_log", response_model=PaginatedBrewLogs, status_code=status.HTTP_200_OK)
+@router.get("/me/brew_log", response_model=PaginatedBrewLogs, status_code=status.HTTP_200_OK)
 def get_brew_log(
-    usr_id: str,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    result = UserController.get_brew_log(db, usr_id, page, page_size)
+    result = UserController.get_brew_log(db, current_user.user_id, page, page_size)
     if result is None:
         raise HTTPException(status_code=404, detail="user_not_found_or_no_logs")
     return result

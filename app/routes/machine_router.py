@@ -77,10 +77,11 @@ Body (JSON): { "brew_id": "string", "recipe_id": "string", "result": { "tds": nu
 
 """
 from sqlalchemy.orm import Session
-from fastapi import APIRouter, HTTPException, status, Query
+from fastapi import APIRouter, HTTPException, status, Query, Depends
 from app.controller.machine_service import MachineController
 from app.core.database import get_db
-from fastapi import Depends
+from app.core.auth import get_current_user
+from app.models.user import User
 from app.schemas.machine_schema import (
     BrewRequest,           # { user_id, recipe_id }
     MachineRegisterSchema, # 머신 등록
@@ -90,14 +91,15 @@ from app.schemas.machine_schema import (
 router = APIRouter()
 
 # 1) Machine Registration
-@router.post("/{user_id}/{machine_id}/register")
+@router.post("/{machine_id}/register")
 async def regist_machine( 
-    user_id: str, 
     machine_id: str, 
     payload: MachineRegisterSchema,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    result = await MachineController.regist_machine(db, user_id, machine_id, payload)
+    # user_id 파라미터 제거, current_user 전달
+    result = await MachineController.regist_machine(db, current_user, machine_id, payload)
     return result
 
 
@@ -106,24 +108,33 @@ async def regist_machine(
 async def prepare_brewing(
     machine_id: str, 
     payload: BrewRequest, 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    return await MachineController.send_brewing_recipe(db, machine_id, payload)
+    return await MachineController.send_brewing_recipe(db, current_user, machine_id, payload)
 
 
 @router.post("/{machine_id}/start")
-async def start_brewing(machine_id: str):
-    return await MachineController.send_brewing_request(machine_id)
+async def start_brewing(
+    machine_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    return await MachineController.send_brewing_request(current_user, machine_id)
 
 
 @router.post("/{machine_id}/stop")
-async def stop_brewing(machine_id: str):
-    return await MachineController.stop_brewing(machine_id)
-
-@router.post("/usr/{usr_id}/log")
-async def create_brew_log(
-    usr_id: str, 
-    payload: MachineBrewLog, 
-    db: Session = Depends(get_db)
+async def stop_brewing(
+    machine_id: str,
+    current_user: User = Depends(get_current_user)
 ):
-    return await MachineController.create_brew_log(db, usr_id, payload)
+    return await MachineController.stop_brewing(current_user, machine_id)
+
+
+@router.post("/log")
+async def create_brew_log(
+    payload: MachineBrewLog, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # usr_id 파라미터 제거, current_user 전달
+    return await MachineController.create_brew_log(db, current_user, payload)
