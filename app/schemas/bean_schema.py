@@ -38,4 +38,11 @@ class BeanRead(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True # ORM 모델에서 데이터 읽기 허용
+
+
+class PaginatedBeans(BaseModel):
+    items: List[BeanRead]
+    page: int
+    page_size: int
+    total: int
