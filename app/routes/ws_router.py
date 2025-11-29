@@ -69,6 +69,7 @@ async def websocket_app_endpoint(
     try:
         while True:
             # 앱은 주로 수신만 하지만, 혹시 보낸다면 무시하거나 핑퐁 처리
+            
             _ = await websocket.receive_json()
             
     except WebSocketDisconnect:

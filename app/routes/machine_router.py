@@ -91,15 +91,19 @@ from app.schemas.machine_schema import (
 router = APIRouter()
 
 # 1) Machine Registration
-@router.post("/{machine_id}/register")
+@router.post("/{machine_i}d/register")
 async def regist_machine( 
     machine_id: str, 
     payload: MachineRegisterSchema,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    #current_user: User = Depends(get_current_user)
+    emaiil : str = Query(...)
 ):
     # user_id 파라미터 제거, current_user 전달
-    result = await MachineController.regist_machine(db, current_user, machine_id, payload)
+    result = await MachineController.regist_machine(db, emaiil, machine_id, payload)
+    if not result:
+        raise HTTPException(status_code=500, detail="failed_to_register_machine")
+        return 500
     return result
 
 

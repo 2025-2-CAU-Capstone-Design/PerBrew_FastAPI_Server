@@ -15,11 +15,11 @@ import json
 class MachineController:
 
     @staticmethod
-    async def regist_machine(db: Session, user: User, machine_id: str, payload: MachineRegisterSchema):
+    async def regist_machine(db: Session, email: str, machine_id: str, payload: MachineRegisterSchema):
         existing = db.query(Machine).filter(Machine.machine_id == machine_id).first()
         if existing:
             # user.user_id 사용
-            if existing.user_id != user.user_id:
+            if existing.email != email:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST, 
                     detail="machine_already_registered_to_another_user"
@@ -30,7 +30,7 @@ class MachineController:
  
         new_machine = Machine(
             machine_id=machine_id,
-            email=user.email, # user.user_id 사용
+            email=email, # user.user_id 사용
             nickname=payload.nickname
             # ip 
             # firmware_version
