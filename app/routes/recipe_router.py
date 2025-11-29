@@ -100,7 +100,48 @@ def list_recipes(
     return result
 
 
-# 레시피 상세 조회
+# 레시피 크롤링 - 구체적 경로이므로 /{recipe_id}보다 먼저 등록
+@router.get("/crawl", status_code=status.HTTP_200_OK)
+def crawl_recipe(url: str = Query(..., description="URL to crawl")):
+    """URL에서 레시피를 크롤링합니다."""
+    data = RecipeController.crawl_recipe(url)
+    if not data:
+        raise HTTPException(status_code=422, detail="parse_failed")
+    return {
+        "status": "success",
+        "recipe_data": data,
+        "message": "Recipe crawled successfully. Use POST /recipe/ to save it."
+    }
+
+
+# 추천 레시피 목록 - 구체적 경로이므로 /{recipe_id}보다 먼저 등록
+@router.get("/recommend", response_model=List[RecipeListItem], status_code=status.HTTP_200_OK)
+def recommend_recipes(
+    limit: int = Query(10, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """JWT 토큰의 사용자 맞춤 추천 레시피 목록 조회"""
+    items = RecipeController.recommend_recipe(db, current_user.user_id, limit)
+    return items
+
+
+# 생성된 레시피 목록 - 구체적 경로이므로 /{recipe_id}보다 먼저 등록
+@router.get("/generated", response_model=PaginatedRecipes, status_code=status.HTTP_200_OK)
+def generated_recipes(
+    page: int = Query(1, ge=1), 
+    page_size: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """JWT 토큰의 사용자가 생성한 레시피 목록 조회"""
+    result = RecipeController.generated_recipes(db, current_user.user_id, page, page_size)
+    if result is None:
+        raise HTTPException(status_code=404, detail="no_generated_recipes")
+    return result
+
+
+# 레시피 상세 조회 - 동적 경로이므로 구체적 경로들 다음에 등록
 @router.get("/{recipe_id}", response_model=RecipeRead, status_code=status.HTTP_200_OK)
 def get_recipe(recipe_id: int, db: Session = Depends(get_db)):
     recipe = RecipeController.recipe_detail(db, recipe_id)
@@ -121,38 +162,3 @@ def update_recipe(
     if not updated:
         raise HTTPException(status_code=404, detail="recipe_not_found")
     return updated
-
-
-# 레시피 크롤링
-@router.get("/crawl", response_model=RecipeRead, status_code=status.HTTP_200_OK)
-def crawl_recipe(url: str = Query(..., description="URL to crawl")):
-    data = RecipeController.crawl_recipe(url)
-    if not data:
-        raise HTTPException(status_code=422, detail="parse_failed")
-    return data
-
-
-# 추천 레시피 목록
-@router.get("/recommend/{user_id}", response_model=List[RecipeListItem], status_code=status.HTTP_200_OK)
-def recommend_recipes(
-    user_id: str, 
-    limit: int = Query(10, ge=1, le=100),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    items = RecipeController.recommend_recipe(db, user_id, limit)
-    return items
-
-# 생성된 레시피 목록
-@router.get("/generated/{user_id}", response_model=PaginatedRecipes, status_code=status.HTTP_200_OK)
-def generated_recipes(
-    user_id: str, 
-    page: int = Query(1, ge=1), 
-    page_size: int = Query(20, ge=1, le=100),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    result = RecipeController.generated_recipes(db, user_id, page, page_size)
-    if result is None:
-        raise HTTPException(status_code=404, detail="no_generated_recipes")
-    return result

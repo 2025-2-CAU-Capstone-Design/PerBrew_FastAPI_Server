@@ -1,13 +1,25 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from app.models.recipe import Recipe, PouringStep
 from app.models.user import User
 from app.schemas.recipe_schema import RecipeCreate, RecipeUpdate
 
+# OpenAI 헬퍼 함수 import
+try:
+    from app.utils.openai_helper import (
+        scrape_website,
+        extract_recipe_from_html,
+        generate_recipe_from_description,
+        extract_recipe_from_description
+    )
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+
 class RecipeController:
     @staticmethod
-    def register_recipe(db: Session, payload: RecipeCreate, current_user: User):
+    def register_recipe(db: Session, payload: RecipeCreate, current_user: User) -> Recipe:
         # Create Recipe
         new_recipe = Recipe(
             recipe_name=payload.recipe_name,
@@ -61,11 +73,11 @@ class RecipeController:
         }
 
     @staticmethod
-    def recipe_detail(db: Session, recipe_id: int):
+    def recipe_detail(db: Session, recipe_id: int) -> Optional[Recipe]:
         return db.query(Recipe).filter(Recipe.recipe_id == recipe_id).first()
 
     @staticmethod
-    def update_recipe(db: Session, recipe_id: int, payload: RecipeUpdate, current_user: User):
+    def update_recipe(db: Session, recipe_id: int, payload: RecipeUpdate, current_user: User) -> Optional[Recipe]:
         recipe = db.query(Recipe).filter(Recipe.recipe_id == recipe_id).first()
         if not recipe:
             return None
@@ -75,7 +87,7 @@ class RecipeController:
         #     return None
 
         # Update fields
-        update_data = payload.dict(exclude_unset=True)
+        update_data = payload.model_dump(exclude_unset=True)
         pouring_steps_data = update_data.pop('pouring_steps', None)
 
         for key, value in update_data.items():
@@ -103,9 +115,47 @@ class RecipeController:
         return recipe
 
     @staticmethod
-    def crawl_recipe(url: str):
-        # Placeholder for crawling logic
-        return None
+    def crawl_recipe(url: str) -> Optional[Dict[str, Any]]:
+        """URL에서 레시피를 크롤링하고 구조화된 데이터로 반환합니다."""
+        if not OPENAI_AVAILABLE:
+            raise Exception("OpenAI helper not available. Check OPENAI_API_KEY configuration.")
+        
+        try:
+            # 1. 웹페이지 HTML 가져오기
+            html_content = scrape_website(url)
+            
+            if html_content.startswith("Error"):
+                return None
+            
+            # 2. HTML에서 레시피 추출
+            recipe_data = extract_recipe_from_html(html_content)
+            
+            if not recipe_data:
+                return None
+            
+            # 3. 반환된 데이터 구조 확인 및 포맷팅
+            # OpenAI가 반환한 JSON을 RecipeCreate에 맞게 변환
+            formatted_recipe = {
+                "recipe_name": recipe_data.get("recipe_name", "Crawled Recipe"),
+                "bean_id": None,  # 크롤링된 레시피는 bean_id 없음
+                "is_public": True,  # 크롤링 레시피는 공개
+                "dose_g": recipe_data.get("dose_g", 15.0),
+                "water_temperature_c": recipe_data.get("water_temperature_c", 93.0),
+                "total_water_g": recipe_data.get("total_water_g"),
+                "total_brew_time_s": recipe_data.get("total_brew_time_s"),
+                "grind_level": recipe_data.get("grind_level"),
+                "grind_microns": recipe_data.get("grind_microns"),
+                "rinsing": recipe_data.get("rinsing", False),
+                "source": "crawled",
+                "url": url,
+                "pouring_steps": recipe_data.get("pouring_steps", [])
+            }
+            
+            return formatted_recipe
+            
+        except Exception as e:
+            print(f"Failed to crawl recipe from {url}: {e}")
+            return None
 
     @staticmethod
     def recommend_recipe(db: Session, user_id: str, limit: int):

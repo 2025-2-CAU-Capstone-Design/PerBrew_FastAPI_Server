@@ -30,7 +30,7 @@ class PouringStepRead(BaseModel):
     technique: Optional[TechniqueEnum] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class RecipeCreate(BaseModel):
@@ -86,7 +86,7 @@ class RecipeListItem(BaseModel):
     created_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class RecipeRead(BaseModel):
@@ -115,7 +115,7 @@ class RecipeRead(BaseModel):
     pouring_steps: List[PouringStepRead]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class PaginatedRecipes(BaseModel):
