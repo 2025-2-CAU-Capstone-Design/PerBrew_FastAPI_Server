@@ -51,7 +51,7 @@ class ConnectionManager:
                     print(f"[WS Service] App disconnected from: {machine_id} (User: {conn['user']})")
                     break
 
-    # [NEW] 머신 메시지 처리 로직 (라우터에서 이동)
+    #  머신 메시지 처리 로직 (라우터에서 이동)
     async def process_machine_message(self, machine_id: str, data: dict):
         # ...existing code...
         msg_type = data.get("type")

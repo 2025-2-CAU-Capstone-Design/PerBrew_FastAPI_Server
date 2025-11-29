@@ -28,8 +28,6 @@ class MachineController:
             db.commit()
             return {"status" : "updated", "machine_id": machine_id }
  
-        existing.nickname = payload.nickname
-        db.commit()
         new_machine = Machine(
             machine_id=machine_id,
             user_id=user.user_id, # user.user_id 사용
@@ -43,7 +41,7 @@ class MachineController:
         return {"status": "registered", "machine_id": machine_id}
 
     @staticmethod
-    async def send_brewing_recipe(db: Session, machine_id: str, payload: BrewRequest):
+    async def send_brewing_recipe(db: Session, user: User, machine_id: str, payload: BrewRequest):
         if machine_id not in ws_manager.active_connections or ws_manager.active_connections[machine_id]["machine"] is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, 
@@ -127,7 +125,7 @@ class MachineController:
             recipe_id=payload.recipe_id,
             machine_id=payload.machine_id,
             # result 필드 파싱 필요 (JSON -> DB 컬럼)
-            tds=payload.result.tds,  
+            tds= None, # 머신에 탑재 못했음.
             avg_temp=payload.result.temperature_c,
             extraction_yield=None # 계산 필요 시 추가
         )
