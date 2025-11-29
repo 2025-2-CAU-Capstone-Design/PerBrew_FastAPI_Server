@@ -118,6 +118,20 @@ class RecipeController:
         return recipe
 
     @staticmethod
+    def delete_recipe(db: Session, recipe_id: int, current_user: User) -> bool:
+        recipe = db.query(Recipe).filter(Recipe.recipe_id == recipe_id).first()
+        if not recipe:
+            return False
+        
+        # Ownership check (optional but recommended)
+        # if recipe.user_id != current_user.user_id:
+        #     return False
+
+        db.delete(recipe)
+        db.commit()
+        return True
+    
+    @staticmethod
     def crawl_recipe(url: str) -> Optional[Dict[str, Any]]:
         """URL에서 레시피를 크롤링하고 구조화된 데이터로 반환합니다."""
         if not OPENAI_AVAILABLE:

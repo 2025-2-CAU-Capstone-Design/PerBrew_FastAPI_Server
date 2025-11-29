@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.core.database import get_db
 
 # 비밀번호 해싱 설정
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/usr/login")
 
 

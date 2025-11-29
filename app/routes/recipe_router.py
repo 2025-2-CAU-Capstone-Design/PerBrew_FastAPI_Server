@@ -162,3 +162,15 @@ def update_recipe(
     if not updated:
         raise HTTPException(status_code=404, detail="recipe_not_found")
     return updated
+
+
+@router.delete("/{recipe_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_recipe(
+    recipe_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    deleted = RecipeController.delete_recipe(db, recipe_id, current_user)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="recipe_not_found")
+    return
