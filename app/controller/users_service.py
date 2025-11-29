@@ -14,9 +14,10 @@ class UserController:
     def signup(db: Session, payload: UserSignUp):
         check_user = db.query(User).filter(User.email == payload.email).first()
         if check_user:
-            return 
+            return None
         hashed_password = get_password_hash(payload.password)
         new_user = User(
+            user_id = payload.user_id,
             email=payload.email,
             username = payload.username,
             password_hash = hashed_password
