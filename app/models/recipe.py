@@ -15,6 +15,7 @@ class Recipe(Base):
     recipe_name = Column(String(200), nullable=False)
     user_id = Column(String(36), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
     bean_id = Column(Integer, ForeignKey("coffee_beans.bean_id", ondelete="SET NULL"), nullable=True, index=True)
+    seed = Column(Boolean, default=False, nullable=False) # 기반 레시피 여부
     
     # 공개 설정
     is_public = Column(Boolean, default=False, nullable=False)
@@ -73,7 +74,6 @@ class PouringStep(Base):
     wait_time_s = Column(Float, nullable=True)  # 대기 시간
     bloom_time_s = Column(Float, nullable=True)  # 블루밍 시간
     technique = Column(Enum(TechniqueEnum), nullable=True)  # center, spiral_out, pulse
-    seed = Column(Boolean, default=False, nullable=False) # 기반 레시피 여부
 
 
 

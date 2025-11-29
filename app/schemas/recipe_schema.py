@@ -52,6 +52,8 @@ class RecipeCreate(BaseModel):
     source: Optional[str] = None
     url: Optional[str] = None
 
+    seed: bool = False
+
     pouring_steps: List[PouringStepCreate]
 
 
