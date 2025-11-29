@@ -21,7 +21,7 @@ class RecipeController:
     @staticmethod
     def register_recipe(db: Session, payload: RecipeCreate, current_user: User) -> Recipe:
         # Create Recipe
-        new_recipe = Recipe(
+        new_recipe = Recipe(            
             recipe_name=payload.recipe_name,
             user_id=current_user.user_id,
             bean_id=payload.bean_id,
@@ -35,7 +35,8 @@ class RecipeController:
             grind_microns=payload.grind_microns,
             rinsing=payload.rinsing,
             source=payload.source,
-            url=payload.url
+            url=payload.url,
+            seed = payload.seed
         )
         db.add(new_recipe)
         db.flush() # Get recipe_id
@@ -107,7 +108,8 @@ class RecipeController:
                     pour_time_s=step['pour_time_s'],
                     wait_time_s=step.get('wait_time_s'),
                     bloom_time_s=step.get('bloom_time_s'),
-                    technique=step.get('technique')
+                    technique=step.get('technique'),
+                    seed=step.get('seed', False)
                 )
                 db.add(new_step)
 

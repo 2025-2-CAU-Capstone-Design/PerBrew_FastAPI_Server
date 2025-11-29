@@ -73,7 +73,10 @@ class PouringStep(Base):
     wait_time_s = Column(Float, nullable=True)  # 대기 시간
     bloom_time_s = Column(Float, nullable=True)  # 블루밍 시간
     technique = Column(Enum(TechniqueEnum), nullable=True)  # center, spiral_out, pulse
-    
+    seed = Column(Boolean, default=False, nullable=False) # 기반 레시피 여부
+
+
+
     # Relationships
     recipe = relationship("Recipe", back_populates="pouring_steps")
     

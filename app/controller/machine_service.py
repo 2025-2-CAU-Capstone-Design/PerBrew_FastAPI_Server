@@ -30,7 +30,7 @@ class MachineController:
  
         new_machine = Machine(
             machine_id=machine_id,
-            user_id=user.user_id, # user.user_id 사용
+            email=user.email, # user.user_id 사용
             nickname=payload.nickname
             # ip 
             # firmware_version
