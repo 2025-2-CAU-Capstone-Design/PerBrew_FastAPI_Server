@@ -42,6 +42,7 @@ class RecipeCreate(BaseModel):
     water_temperature_c: float
     total_water_g: Optional[float] = None
     total_brew_time_s: Optional[float] = None
+    brew_ratio: Optional[float] = None
 
     grind_level: Optional[str] = None
     grind_microns: Optional[int] = None
@@ -63,6 +64,7 @@ class RecipeUpdate(BaseModel):
     water_temperature_c: Optional[float] = None
     total_water_g: Optional[float] = None
     total_brew_time_s: Optional[float] = None
+    brew_ratio: Optional[float] = None
 
     grind_level: Optional[str] = None
     grind_microns: Optional[int] = None
@@ -83,6 +85,7 @@ class RecipeListItem(BaseModel):
     dose_g: float
     water_temperature_c: float
     total_water_g: Optional[float]
+    brew_ratio: Optional[float]
     created_at: datetime
 
     class Config:
@@ -100,6 +103,7 @@ class RecipeRead(BaseModel):
     water_temperature_c: float
     total_water_g: Optional[float]
     total_brew_time_s: Optional[float]
+    brew_ratio: Optional[float]
 
     grind_level: Optional[str]
     grind_microns: Optional[int]

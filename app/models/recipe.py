@@ -24,6 +24,7 @@ class Recipe(Base):
     water_temperature_c = Column(Float, nullable=False)  # 물 온도
     total_water_g = Column(Float, nullable=True)  # 총 물 양
     total_brew_time_s = Column(Float, nullable=True)  # 총 추출 시간
+    brew_ratio = Column(Float, nullable=True)  # 브루잉 비율 (예: 1:15)
     
     # 분쇄도
     grind_level = Column(String(50), nullable=True)  # coarse, medium, fine
