@@ -17,7 +17,6 @@ class UserController:
             return None
         hashed_password = get_password_hash(payload.password)
         new_user = User(
-            user_id = payload.user_id,
             email=payload.email,
             username = payload.username,
             password_hash = hashed_password
@@ -48,10 +47,7 @@ class UserController:
 
 
     @staticmethod
-    def update_user_info(db: Session, user_id: str, payload: UserInfoUpdate):
-        user = db.query(User).filter(User.user_id == user_id).first()
-        if not user:
-            return None
+    def update_user_info(db: Session, user: User, payload: UserInfoUpdate):
         
         # 값이 있는 필드만 업데이트
         if payload.username is not None:
@@ -67,20 +63,13 @@ class UserController:
 
 
     @staticmethod
-    def get_user_pref(db: Session, user_id: str):
-        user = db.query(User).filter(User.user_id == user_id).first()
-        if not user:
-            return None
+    def get_user_pref(user: User):
         return user  # User 모델에 선호도 필드가 포함되어 있음
 
 
     @staticmethod
-    def set_user_pref(db: Session, user_id: str, payload: UserPreferenceUpdate):
-        user = db.query(User).filter(User.user_id == user_id).first()
-        if not user:
-            return None
-        
-        # Pydantic 모델에서 설정된 값만 추출하여 업데이트
+    def set_user_pref(db: Session, user: User, payload: UserPreferenceUpdate):
+        # user_id로 다시 조회하지 않고 전달받은 user 객체 사용
         update_data = payload.dict(exclude_unset=True)
         for key, value in update_data.items():
             setattr(user, key, value)
@@ -89,12 +78,13 @@ class UserController:
         db.refresh(user)
         return user
 
+
     @staticmethod
     def get_brew_log(db: Session, user_id: str, page: int, page_size: int):
-        # 아직 BrewLog 모델이 연동되지 않았으므로 빈 결과 반환 (추후 구현)
+        # 로그 조회는 user 테이블이 아닌 log 테이블을 조회하므로 user_id만 있어도 됨
         return {
             "items": [],
             "page": page,
             "page_size": page_size,
             "total": 0
-        }   
+        }

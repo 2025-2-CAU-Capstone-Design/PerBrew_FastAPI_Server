@@ -4,10 +4,11 @@ import json
 
 class ConnectionManager:
     def __init__(self):
-        # { "machine_id": { "machine": WebSocket | None, "apps": [WebSocket, ...] } }
+        # { "machine_id": { "machine": WebSocket | None, "apps": [{"ws": WebSocket, "user": str}, ...] } }
         self.active_connections: Dict[str, Dict[str, Any]] = {}
 
     async def connect_machine(self, machine_id: str, websocket: WebSocket):
+        # ...existing code...
         await websocket.accept()
         if machine_id not in self.active_connections:
             self.active_connections[machine_id] = {"machine": None, "apps": []}
@@ -22,27 +23,37 @@ class ConnectionManager:
         self.active_connections[machine_id]["machine"] = websocket
         print(f"[WS Service] Machine connected: {machine_id}")
 
-    async def connect_app(self, machine_id: str, websocket: WebSocket):
+    # [CHANGED] user_email 인자 추가 및 저장 구조 변경 (Dict로 저장)
+    async def connect_app(self, machine_id: str, websocket: WebSocket, user_email: str = "Unknown"):
         await websocket.accept()
         if machine_id not in self.active_connections:
             self.active_connections[machine_id] = {"machine": None, "apps": []}
         
-        self.active_connections[machine_id]["apps"].append(websocket)
-        print(f"[WS Service] App connected to machine: {machine_id}")
+        # WebSocket 객체와 사용자 정보를 함께 저장
+        connection_info = {"ws": websocket, "user": user_email}
+        self.active_connections[machine_id]["apps"].append(connection_info)
+        print(f"[WS Service] App connected to machine: {machine_id} (User: {user_email})")
 
     def disconnect_machine(self, machine_id: str):
+        # ...existing code...
         if machine_id in self.active_connections:
             self.active_connections[machine_id]["machine"] = None
             print(f"[WS Service] Machine disconnected: {machine_id}")
 
+    # [CHANGED] 저장 구조 변경에 따른 연결 해제 로직 수정
     def disconnect_app(self, machine_id: str, websocket: WebSocket):
         if machine_id in self.active_connections:
-            if websocket in self.active_connections[machine_id]["apps"]:
-                self.active_connections[machine_id]["apps"].remove(websocket)
-                print(f"[WS Service] App disconnected from: {machine_id}")
+            apps_list = self.active_connections[machine_id]["apps"]
+            # 리스트에서 해당 웹소켓을 가진 항목 찾아서 제거
+            for conn in apps_list:
+                if conn["ws"] == websocket:
+                    apps_list.remove(conn)
+                    print(f"[WS Service] App disconnected from: {machine_id} (User: {conn['user']})")
+                    break
 
     # [NEW] 머신 메시지 처리 로직 (라우터에서 이동)
     async def process_machine_message(self, machine_id: str, data: dict):
+        # ...existing code...
         msg_type = data.get("type")
         
         # 1. 로그 및 모니터링
@@ -63,6 +74,7 @@ class ConnectionManager:
 
     # 앱 -> 머신 명령 전달
     async def send_command_to_machine(self, machine_id: str, message: dict):
+        # ...existing code...
         if machine_id in self.active_connections:
             machine_ws = self.active_connections[machine_id]["machine"]
             if machine_ws:
@@ -75,12 +87,15 @@ class ConnectionManager:
         return False
 
     # 내부 유틸리티: 브로드캐스트
+    # [CHANGED] 저장 구조 변경에 따른 브로드캐스트 로직 수정
     async def broadcast_to_apps(self, machine_id: str, message: dict):
         if machine_id in self.active_connections:
-            for app_ws in self.active_connections[machine_id]["apps"][:]:
+            # apps 리스트의 각 항목은 이제 dict임
+            for conn in self.active_connections[machine_id]["apps"][:]:
+                app_ws = conn["ws"]
                 try:
                     await app_ws.send_json(message)
                 except Exception as e:
-                    print(f"[WS Service] Error sending to app: {e}")
+                    print(f"[WS Service] Error sending to app ({conn['user']}): {e}")
 
 ws_manager = ConnectionManager()

@@ -6,6 +6,7 @@ from app.schemas.machine_schema import (
 from app.models.machine import Machine
 from app.models.recipe import Recipe
 from app.models.brew_log import BrewLog
+from app.models.user import User
 from app.controller.ws_service import ws_manager # WebSocket 매니저 임포트
 import json
 
@@ -14,10 +15,11 @@ import json
 class MachineController:
 
     @staticmethod
-    async def regist_machine(db: Session, user_id: str, machine_id: str, payload: MachineRegisterSchema):
+    async def regist_machine(db: Session, user: User, machine_id: str, payload: MachineRegisterSchema):
         existing = db.query(Machine).filter(Machine.machine_id == machine_id).first()
         if existing:
-            if existing.user_id != user_id:
+            # user.user_id 사용
+            if existing.user_id != user.user_id:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST, 
                     detail="machine_already_registered_to_another_user"
@@ -25,12 +27,12 @@ class MachineController:
             existing.nickname = payload.nickname
             db.commit()
             return {"status" : "updated", "machine_id": machine_id }
-
+ 
         existing.nickname = payload.nickname
         db.commit()
         new_machine = Machine(
             machine_id=machine_id,
-            user_id=user_id,
+            user_id=user.user_id, # user.user_id 사용
             nickname=payload.nickname
             # ip 
             # firmware_version
@@ -42,7 +44,6 @@ class MachineController:
 
     @staticmethod
     async def send_brewing_recipe(db: Session, machine_id: str, payload: BrewRequest):
-        # TODO: 실제 브루잉 요청 로직 구현 (WebSocket으로 머신에 신호 전송 등)
         if machine_id not in ws_manager.active_connections or ws_manager.active_connections[machine_id]["machine"] is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, 
@@ -97,7 +98,7 @@ class MachineController:
 
     # 브루잉 시작 요청
     @staticmethod
-    async def send_brewing_request(machine_id: str):
+    async def send_brewing_request(user: User, machine_id: str):
         if machine_id not in ws_manager.active_machines or ws_manager.active_connections[machine_id]["machine"] is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, 
@@ -111,7 +112,7 @@ class MachineController:
         return {"status": "started", "machine_id": machine_id, "brew_id": "dummy_brew_id"}
 
     @staticmethod
-    async def stop_brewing(machine_id: str):
+    async def stop_brewing(user: User, machine_id: str):
         success = await ws_manager.send_command_to_machine(machine_id, {"type": "STOP_BREW"})
         if not success:
              raise HTTPException(status_code=503, detail="Machine not connected")
@@ -119,9 +120,9 @@ class MachineController:
 
 
     @staticmethod
-    async def create_brew_log(db: Session, user_id: str, payload: MachineBrewLog):
+    async def create_brew_log(db: Session, user: User, payload: MachineBrewLog):
         new_log = BrewLog(
-            user_id=user_id,
+            user_id=user.user_id,
             recipe_id=payload.recipe_id,
             machine_id=payload.machine_id,
             # result 필드 파싱 필요 (JSON -> DB 컬럼)

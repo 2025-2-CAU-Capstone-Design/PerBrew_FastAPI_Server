@@ -1,7 +1,10 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, status
 from sqlalchemy.orm import Session
+from jose import jwt, JWTError
 from app.core.database import get_db
 from app.controller.ws_service import ws_manager
+from app.core.config import settings
+from app.models.user import User
 import json
 
 router = APIRouter()
@@ -26,8 +29,33 @@ async def websocket_machine_endpoint(websocket: WebSocket, machine_id: str, db: 
 
 
 # [App] 앱 연결
-@router.websocket("/app/{machine_id}/{user_id}")
-async def websocket_app_endpoint(websocket: WebSocket, machine_id: str, user_id: str, db: Session = Depends(get_db)):
+@router.websocket("/app/{machine_id}")
+async def websocket_app_endpoint(
+    websocket: WebSocket, 
+    machine_id: str, 
+    token: str = Query(...), 
+    db: Session = Depends(get_db)
+):
+    # JWT 토큰 검증 및 사용자 확인
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+        
+        user = db.query(User).filter(User.email == email).first()
+        if user is None:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+            
+        # 로깅용 사용자 식별자
+        user_identifier = email
+
+    except JWTError:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
     await ws_manager.connect_app(machine_id, websocket)
     try:
         while True:
@@ -37,5 +65,5 @@ async def websocket_app_endpoint(websocket: WebSocket, machine_id: str, user_id:
     except WebSocketDisconnect:
         ws_manager.disconnect_app(machine_id, websocket)
     except Exception as e:
-        print(f"[WS Error] App {user_id}: {e}")
+        print(f"[WS Error] App {user_identifier}: {e}")
         ws_manager.disconnect_app(machine_id, websocket)
