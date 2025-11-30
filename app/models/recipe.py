@@ -1,6 +1,6 @@
 # models/recipe.py
 from sqlalchemy import Column, Integer, String, Float, Boolean, Text, DateTime, ForeignKey, Enum
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship , backref
 from datetime import datetime
 from app.core.database import Base
 import enum
@@ -12,6 +12,7 @@ class Recipe(Base):
     recipe_id = Column(Integer, primary_key=True, autoincrement=True)
     
     # 기본 정보
+    parent_recipe_id = Column(Integer, ForeignKey("recipes.recipe_id", ondelete="SET NULL"), nullable=True)
     recipe_name = Column(String(200), nullable=False)
     user_id = Column(String(36), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
     bean_id = Column(Integer, ForeignKey("coffee_beans.bean_id", ondelete="SET NULL"), nullable=True, index=True)
@@ -47,7 +48,7 @@ class Recipe(Base):
     bean = relationship("CoffeeBean", back_populates="recipes")
     pouring_steps = relationship("PouringStep", back_populates="recipe", cascade="all, delete-orphan", order_by="PouringStep.step_number")
     brew_logs = relationship("BrewLog", back_populates="recipe")
-    
+    children = relationship("Recipe", backref = backref('parent', remote_side=[recipe_id]))
     def __repr__(self):
         return f"<Recipe(recipe_id={self.recipe_id}, name={self.recipe_name})>"
 

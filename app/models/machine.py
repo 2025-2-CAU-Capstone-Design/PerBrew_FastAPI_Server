@@ -24,6 +24,7 @@ class Machine(Base):
     user_id = Column(String(36), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False, index=True)
     
     # 머신 정보
+    email = Column(String(255), nullable=False)
     nickname = Column(String(100), nullable=True)
     ip_address = Column(String(50), nullable=True)
     

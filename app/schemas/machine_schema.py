@@ -44,9 +44,8 @@ class AppBeanWeightPush(BaseModel):
 
 # 5) Machine Registration
 class MachineRegisterSchema(BaseModel):
-    nickname: Optional[str] = None
-    ip_address: Optional[str] = None
-    firmware_version: Optional[str] = None
+    email: str
+    machine_id: str
 
 
 class MachineRead(BaseModel):

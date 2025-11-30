@@ -91,19 +91,17 @@ from app.schemas.machine_schema import (
 router = APIRouter()
 
 # 1) Machine Registration
-@router.post("/{machine_i}d/register")
-async def regist_machine( 
+@router.post("/{machine_id}/register")
+async def regist_machine(
     machine_id: str, 
-    payload: MachineRegisterSchema,
-    db: Session = Depends(get_db),
-    #current_user: User = Depends(get_current_user)
-    emaiil : str = Query(...)
+    payload: MachineRegisterSchema,  # MachineRegisterSchema 대신 새로운 스키마 사용
+    db: Session = Depends(get_db)
 ):
     # user_id 파라미터 제거, current_user 전달
-    result = await MachineController.regist_machine(db, emaiil, machine_id, payload)
+    print("machine register request : " + machine_id)
+    result = await MachineController.regist_machine(db, payload.email, machine_id, payload)
     if not result:
         raise HTTPException(status_code=500, detail="failed_to_register_machine")
-        return 500
     return result
 
 
@@ -118,22 +116,6 @@ async def prepare_brewing(
     return await MachineController.send_brewing_recipe(db, current_user, machine_id, payload)
 
 
-@router.post("/{machine_id}/start")
-async def start_brewing(
-    machine_id: str,
-    current_user: User = Depends(get_current_user)
-):
-    return await MachineController.send_brewing_request(current_user, machine_id)
-
-
-@router.post("/{machine_id}/stop")
-async def stop_brewing(
-    machine_id: str,
-    current_user: User = Depends(get_current_user)
-):
-    return await MachineController.stop_brewing(current_user, machine_id)
-
-
 @router.post("/log")
 async def create_brew_log(
     payload: MachineBrewLog, 
@@ -142,3 +124,25 @@ async def create_brew_log(
 ):
     # usr_id 파라미터 제거, current_user 전달
     return await MachineController.create_brew_log(db, current_user, payload)
+
+
+#############################################################################################
+#############################################################################################
+# deprecated : 브루잉 요청 API -> ws_router의 웹소켓으로 대체
+# 3) Request Brewing
+@router.post("/{machine_id}/start")
+async def start_brewing(
+    machine_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    return await MachineController.send_brewing_request(current_user, machine_id)
+
+# deprecated : 중단 요청 API -> ws_router의 웹소켓으로 대체
+# 4) Stop Brewing
+@router.post("/{machine_id}/stop")
+async def stop_brewing(
+    machine_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    return await MachineController.stop_brewing(current_user, machine_id)
+

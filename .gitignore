@@ -7,3 +7,5 @@ __pycache__/
 test_front/
 PerBrew.db
 .lock
+tests/
+create_dummy/

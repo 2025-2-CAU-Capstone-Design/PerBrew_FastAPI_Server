@@ -10,8 +10,6 @@ from app.models.user import User
 from app.controller.ws_service import ws_manager # WebSocket 매니저 임포트
 import json
 
-
-# 레시피 전송
 class MachineController:
 
     @staticmethod
@@ -24,14 +22,15 @@ class MachineController:
                     status_code=status.HTTP_400_BAD_REQUEST, 
                     detail="machine_already_registered_to_another_user"
                 )
-            existing.nickname = payload.nickname
+            existing.email = email
             db.commit()
             return {"status" : "updated", "machine_id": machine_id }
  
         new_machine = Machine(
             machine_id=machine_id,
             email=email, # user.user_id 사용
-            nickname=payload.nickname
+            user_id = db.query(User).filter(User.email == email).first().user_id,
+            #nickname=payload.nickname
             # ip 
             # firmware_version
             # 생략
@@ -48,7 +47,7 @@ class MachineController:
                 detail="machine_not_connected"
             )
         
-        recipe = db.query(Recipe).filter(Recipe.id == payload.recipe_id).first()
+        recipe = db.query(Recipe).filter(Recipe.recipe_id == payload.recipe_id).first()
         if not recipe:
             raise HTTPException(
                 status_code=404, detail="recipe_not_found"
@@ -91,10 +90,31 @@ class MachineController:
         if not success:
             raise HTTPException(status_code=500, detail="Failed to send command to machine")
 
-        return {"status": "accepted", "machine_id": machine_id, "brew_id": "new_brew_id"}
+        return {
+            "status": "ready", 
+            "machine_id": machine_id,
+            "message": "Recipe loaded. Connect to WebSocket to start brewing.",
+            "loaded_recipe_id": recipe.recipe_id
+        }
     
+    @staticmethod
+    async def create_brew_log(db: Session, user: User, payload: MachineBrewLog):
+        new_log = BrewLog(
+            user_id=user.user_id,
+            recipe_id=payload.recipe_id,
+            machine_id=payload.machine_id,
+            # result 필드 파싱 필요 (JSON -> DB 컬럼)
+            tds= None, # 머신에 탑재 못했음.
+            avg_temp=payload.result.temperature_c,
+            extraction_yield=None # 계산 필요 시 추가
+        )
+        db.add(new_log)
+        db.commit()
+        return {"status": "logged", "log_id": str(new_log.id)}
 
-    # 브루잉 시작 요청
+##################################################################################################
+##################################################################################################
+    # deprecated : 브루잉 시작 요청 
     @staticmethod
     async def send_brewing_request(user: User, machine_id: str):
         if (machine_id not in ws_manager.active_connections 
@@ -110,6 +130,7 @@ class MachineController:
             raise HTTPException(status_code=500, detail="Failed to send start brew command to machine")
         return {"status": "started", "machine_id": machine_id, "brew_id": "dummy_brew_id"}
 
+    # deprecated : 브루잉 중단 요청
     @staticmethod
     async def stop_brewing(user: User, machine_id: str):
         success = await ws_manager.send_command_to_machine(machine_id, {"type": "STOP_BREW"})
@@ -118,18 +139,5 @@ class MachineController:
         return {"status": "stopped", "machine_id": machine_id}
 
 
-    @staticmethod
-    async def create_brew_log(db: Session, user: User, payload: MachineBrewLog):
-        new_log = BrewLog(
-            user_id=user.user_id,
-            recipe_id=payload.recipe_id,
-            machine_id=payload.machine_id,
-            # result 필드 파싱 필요 (JSON -> DB 컬럼)
-            tds= None, # 머신에 탑재 못했음.
-            avg_temp=payload.result.temperature_c,
-            extraction_yield=None # 계산 필요 시 추가
-        )
-        db.add(new_log)
-        db.commit()
-        return {"status": "logged", "log_id": str(new_log.id)}
+
     

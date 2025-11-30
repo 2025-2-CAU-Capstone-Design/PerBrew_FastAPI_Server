@@ -64,14 +64,19 @@ async def websocket_app_endpoint(
     except JWTError:
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
-
-    await ws_manager.connect_app(machine_id, websocket)
+    
+    await ws_manager.connect_app(machine_id, websocket, user.email)
     try:
         while True:
-            # 앱은 주로 수신만 하지만, 혹시 보낸다면 무시하거나 핑퐁 처리
-            
-            _ = await websocket.receive_json()
-            
+            data = await websocket.receive_json()
+            command = data.get("type")
+            print(f"[WS] App {user.email} sent: {command}")
+            if command in ["START_BREW", "STOP_BREW", "PAUSE_BREW"]:
+                await ws_manager.send_command_to_machine(machine_id, data)
+            else:
+                print(f"[WS] Unknown command from App {user.email}: {command}")
+                pass
+
     except WebSocketDisconnect:
         ws_manager.disconnect_app(machine_id, websocket)
     except Exception as e:
