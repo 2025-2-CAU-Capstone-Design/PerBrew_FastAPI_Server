@@ -28,7 +28,17 @@ async def websocket_machine_endpoint(
             # 비즈니스 로직은 서비스 계층으로 위임
             msg_type = await ws_manager.process_machine_message(machine_id, data)
             if msg_type == "BREW_DONE":
-                await handle_brew_done(machine_id, data, db)
+                try:
+                    await handle_brew_done(machine_id, data, db)
+                except Exception as e:
+                    print(f"[WS Error] handle_brew_done failed: {e}")
+                    await ws_manager.broadcast_to_apps(
+                        machine_id,
+                        {
+                            "type": "ERROR",
+                            "message": f"Failed to save brew log: {str(e)}"
+                        }
+                    )
             
     except WebSocketDisconnect:
         ws_manager.disconnect_machine(machine_id)
@@ -86,6 +96,14 @@ async def websocket_app_endpoint(
 
 async def handle_brew_done(machine_id: str, data: dict, db: Session):
     # 1. 머신 소유자 찾기
+    recipe_id = data.get("recipe_id")
+    if not recipe_id:
+        recipe_id = ws_manager.get_last_recipe(machine_id)
+        if not recipe_id:
+            print(f"[WS] BREW_DONE but no recipe_id available: {machine_id}")
+            raise ValueError("No recipe_id in message and no last recipe found")
+        print(f"[WS] Using last prepared recipe_id: {recipe_id}")
+
     machine = db.query(Machine).filter(Machine.machine_id == machine_id).first()
     if not machine:
         print(f"[WS] BREW_DONE but machine row not found: {machine_id}")
@@ -97,9 +115,9 @@ async def handle_brew_done(machine_id: str, data: dict, db: Session):
         return
 
     brew_log_payload = MachineBrewLog(
-        recipe_id=data["recipe_id"],
+        recipe_id=recipe_id,
         machine_id=machine_id,
-        result=data["result"],
+        result=data.get("result", {}),
     )
 
     log_result = await MachineController.create_brew_log(db, user, brew_log_payload)

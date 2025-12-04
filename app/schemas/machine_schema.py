@@ -15,7 +15,6 @@ class BrewPhase(str, Enum):
 
 # 1) App -> Server
 class BrewRequest(BaseModel):
-    user_id: str
     recipe_id: int
 
 
@@ -50,7 +49,6 @@ class MachineRegisterSchema(BaseModel):
 
 class MachineRead(BaseModel):
     machine_id: str
-    user_id: str
     nickname: Optional[str]
     ip_address: Optional[str]
     current_phase: BrewPhase
@@ -72,11 +70,10 @@ class BrewResult(BaseModel):
 
 
 class MachineBrewLog(BaseModel):
-    brew_id: str
     recipe_id: Optional[int] = None
     bean_id: Optional[int] = None
     machine_id: Optional[str] = None
-    result: BrewResult
+    result: Optional[dict] = {}
 
 
 # Response

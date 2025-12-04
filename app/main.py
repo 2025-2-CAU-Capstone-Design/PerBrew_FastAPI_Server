@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.database import init_db 
 from app.routes.user_router import router as user_router
@@ -20,6 +21,15 @@ app = FastAPI(
     title="Coffee Machine API",
     version="1.0.0",
     lifespan=lifespan
+)
+
+# CORS 설정 (개발 환경용)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],    # 프로덕션에서는 특정 도메인으로 제한 -> 허용할 출처 정의
+    allow_credentials=True, # 쿠키/인증 등 정보 포함 요청을 허용할지
+    allow_methods=["*"],    # 어떤 HTTP 메서드를 허용할지
+    allow_headers=["*"],    # 어떤 헤더를 허용할지
 )
 
 

@@ -23,6 +23,16 @@ class ConnectionManager:
         self.active_connections[machine_id]["machine"] = websocket
         print(f"[WS Service] Machine connected: {machine_id}")
 
+    def set_last_recipe(self, machine_id: str, recipe_id: int):
+        if machine_id in self.active_connections:
+            self.active_connections[machine_id]["last_recipe_id"] = recipe_id
+
+    # [추가] 레시피 ID 조회
+    def get_last_recipe(self, machine_id: str) -> int | None:
+        if machine_id in self.active_connections:
+            return self.active_connections[machine_id].get("last_recipe_id")
+        return None
+    
     # [CHANGED] user_email 인자 추가 및 저장 구조 변경 (Dict로 저장)
     async def connect_app(self, machine_id: str, websocket: WebSocket, user_email: str = "Unknown"):
         await websocket.accept()

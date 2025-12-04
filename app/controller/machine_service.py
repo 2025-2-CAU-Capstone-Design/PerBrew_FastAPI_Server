@@ -14,6 +14,12 @@ class MachineController:
 
     @staticmethod
     async def regist_machine(db: Session, email: str, machine_id: str, payload: MachineRegisterSchema):
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="user_not_found"
+            )
         existing = db.query(Machine).filter(Machine.machine_id == machine_id).first()
         if existing:
             # user.user_id 사용
@@ -25,7 +31,7 @@ class MachineController:
             existing.email = email
             db.commit()
             return {"status" : "updated", "machine_id": machine_id }
- 
+    
         new_machine = Machine(
             machine_id=machine_id,
             email=email, # user.user_id 사용
@@ -90,6 +96,8 @@ class MachineController:
         if not success:
             raise HTTPException(status_code=500, detail="Failed to send command to machine")
 
+        ws_manager.set_last_recipe(machine_id, recipe.recipe_id)
+        
         return {
             "status": "ready", 
             "machine_id": machine_id,
