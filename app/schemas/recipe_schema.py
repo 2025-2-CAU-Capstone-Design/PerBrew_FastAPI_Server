@@ -44,7 +44,7 @@ class RecipeCreate(BaseModel):
     total_brew_time_s: Optional[float] = None
     brew_ratio: Optional[float] = None
 
-    grind_level: Optional[str] = None
+    grind_level: Optional[int] = None
     grind_microns: Optional[int] = None
 
     rinsing: bool = False
@@ -68,7 +68,7 @@ class RecipeUpdate(BaseModel):
     total_brew_time_s: Optional[float] = None
     brew_ratio: Optional[float] = None
 
-    grind_level: Optional[str] = None
+    grind_level: Optional[int] = None
     grind_microns: Optional[int] = None
 
     rinsing: Optional[bool] = None
@@ -107,7 +107,7 @@ class RecipeRead(BaseModel):
     total_brew_time_s: Optional[float]
     brew_ratio: Optional[float]
 
-    grind_level: Optional[str]
+    grind_level: Optional[int]
     grind_microns: Optional[int]
 
     rinsing: bool

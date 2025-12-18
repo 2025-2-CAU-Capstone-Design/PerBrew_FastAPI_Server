@@ -29,7 +29,7 @@ class Recipe(Base):
     brew_ratio = Column(Float, nullable=True)  # 브루잉 비율 (예: 1:15)
     
     # 분쇄도
-    grind_level = Column(String(50), nullable=True)  # coarse, medium, fine
+    grind_level = Column(Integer,  nullable=True)  # coarse, medium, fine
     grind_microns = Column(Integer, nullable=True)  # 미크론 단위
     
     # 추가 옵션
@@ -47,7 +47,12 @@ class Recipe(Base):
     owner = relationship("User", back_populates="recipes")
     bean = relationship("CoffeeBean", back_populates="recipes")
     pouring_steps = relationship("PouringStep", back_populates="recipe", cascade="all, delete-orphan", order_by="PouringStep.step_number")
-    brew_logs = relationship("BrewLog", back_populates="recipe")
+    brew_logs = relationship(
+        "BrewLog",
+        foreign_keys="BrewLog.recipe_id",           # ← Critical: specify the correct FK
+        back_populates="recipe",
+        cascade="all, delete-orphan"  # optional, depending on your needs
+    )
     children = relationship("Recipe", backref = backref('parent', remote_side=[recipe_id]))
     def __repr__(self):
         return f"<Recipe(recipe_id={self.recipe_id}, name={self.recipe_name})>"

@@ -81,7 +81,7 @@ async def websocket_app_endpoint(
             data = await websocket.receive_json()
             command = data.get("type")
             print(f"[WS] App {user.email} sent: {command}")
-            if command in ["START_BREW", "STOP_BREW", "PAUSE_BREW"]:
+            if command in ["START_BREW", "STOP_BREW", "PAUSE_BREW", "FINISH_CLICK_ADJUST", "FINISH_WEIGHING", "START_RINSING", "START_GRINDING", "JUST_GRINDING", "JUST_GRINDING_STOP", "TARE", "STOP_GRINDING"]:
                 await ws_manager.send_command_to_machine(machine_id, data)
             else:
                 print(f"[WS] Unknown command from App {user.email}: {command}")

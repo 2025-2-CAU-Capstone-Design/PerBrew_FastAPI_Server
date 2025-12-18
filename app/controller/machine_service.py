@@ -47,18 +47,20 @@ class MachineController:
 
     @staticmethod
     async def send_brewing_recipe(db: Session, user: User, machine_id: str, payload: BrewRequest):
+        print(f"[MachineController] send_brewing_recipe called for machine {machine_id} and recipe {payload.recipe_id}")
         if machine_id not in ws_manager.active_connections or ws_manager.active_connections[machine_id]["machine"] is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND, 
                 detail="machine_not_connected"
             )
-        
-        recipe = db.query(Recipe).filter(Recipe.recipe_id == payload.recipe_id).first()
+        print(f"[MachineController] Fetching recipe {payload.recipe_id} from DB")
+        recipe_id = int(payload.recipe_id)  # Convert explicitly
+        recipe = db.query(Recipe).filter(Recipe.recipe_id == recipe_id).first()
         if not recipe:
             raise HTTPException(
                 status_code=404, detail="recipe_not_found"
             )
-        
+        print(f"[MachineController] Preparing to send recipe {recipe.recipe_id} to machine {machine_id}")
         # ESP32 파싱 구조에 맞게 수정
         total_time = 0
         steps_data = []
@@ -75,10 +77,10 @@ class MachineController:
                 })
                 total_time += pouring_time + waiting_time
 
-        grind_val = 90 # 기본값
-        if recipe.grind_level and recipe.grind_level.isdigit():
+        grind_val = 250 # 기본값
+        if recipe.grind_level:
             grind_val = int(recipe.grind_level)
-
+        print(f"[MachineController] Sending recipe {recipe.recipe_id} to machine {machine_id}")
         command_payload = {
             "type": "RECIPE_DATA", 
             "recipe": {
@@ -119,6 +121,40 @@ class MachineController:
         db.add(new_log)
         db.commit()
         return {"status": "logged", "log_id": str(new_log.id)}
+
+    @staticmethod
+    async def update_nickname(db: Session, user: User, machine_id: str, payload: MachineNicknameUpdate):
+        machine = db.query(Machine).filter(
+            Machine.machine_id == machine_id,
+            Machine.user_id == user.user_id
+        ).first()
+        if not machine:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="machine_not_found"
+            )
+        
+        machine.nickname = payload.nickname
+        db.commit()
+        return {"status": "nickname_updated", "machine_id": machine_id, "new_nickname": payload.nickname}
+    
+    @staticmethod
+    async def get_machine_list(db: Session, user: User):
+        machines = db.query(Machine).filter(Machine.user_id == user.user_id).all()
+        machine_list = []
+        for machine in machines:
+            machine_list.append({
+                "machine_id": machine.machine_id,
+                "nickname": machine.nickname,
+                "ip_address": machine.ip_address,
+                "current_phase": machine.current_phase,
+                "last_brew_id": machine.last_brew_id,
+                "is_active": machine.is_active,
+                "firmware_version": machine.firmware_version,
+                "registered_at": machine.registered_at,
+                "last_seen_at": machine.last_seen_at
+            })
+        return {"machines": machine_list}
 
 ##################################################################################################
 ##################################################################################################

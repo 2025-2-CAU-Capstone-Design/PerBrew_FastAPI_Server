@@ -85,6 +85,7 @@ from app.models.user import User
 from app.schemas.machine_schema import (
     BrewRequest,           # { user_id, recipe_id }
     MachineRegisterSchema, # 머신 등록
+    MachineNicknameUpdate,  # 닉네임 변경
     MachineBrewLog         # 머신 결과 로그
 )
 
@@ -125,6 +126,21 @@ async def create_brew_log(
     # usr_id 파라미터 제거, current_user 전달
     return await MachineController.create_brew_log(db, current_user, payload)
 
+@router.patch("/{machine_id}/nickname")
+async def update_nickname(
+    machine_id: str,
+    payload: MachineNicknameUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return await MachineController.update_nickname(db, current_user, machine_id, payload)
+
+@router.get('/list')
+async def get_machine_list(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return await MachineController.get_machine_list(db, current_user)
 
 #############################################################################################
 #############################################################################################

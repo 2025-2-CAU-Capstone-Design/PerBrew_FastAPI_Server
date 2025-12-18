@@ -61,6 +61,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.auth import get_current_user  # auth 모듈에서 get_current_user 가져오기
 from app.models.user import User  # User 모델 가져오기 (타입 힌팅용)
+from app.models.brew_log import BrewLog as BrewLogModel
 from app.controller.users_service import UserController
 from app.schemas.user_schema import (
     UserSignUp,
@@ -72,6 +73,8 @@ from app.schemas.user_schema import (
     TokenResponse,
     PaginatedBrewLogs,
 )
+from app.schemas.brew_log import BrewLogCreate
+
 router = APIRouter()
 
 #-----------------------------------
@@ -86,6 +89,7 @@ def signup(payload: UserSignUp, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse, status_code=status.HTTP_200_OK)
 async def login(payload: UserLogin, db: Session = Depends(get_db)):
+    print("login request for : " + payload.email)
     token = UserController.login(db, payload)
     if not token:
         raise HTTPException(status_code=401, detail="invalid_credentials")
@@ -152,3 +156,23 @@ def get_brew_log(
     if result is None:
         raise HTTPException(status_code=404, detail="user_not_found_or_no_logs")
     return result
+
+# routers/brew_log.py
+@router.post("/me/brew_log", status_code=status.HTTP_201_CREATED)
+def create_brew_log(
+    payload: BrewLogCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # payload contains: recipe_id, brew_id, tds, temperature_c, machine_id, etc.
+    brew_log = BrewLogModel(
+        user_id=current_user.user_id,
+        recipe_id=payload.recipe_id,
+        machine_id=payload.machine_id,
+        brew_id=payload.brew_id,
+        notes=payload.notes,
+    )
+    db.add(brew_log)
+    db.commit()
+    db.refresh(brew_log)
+    return {"log_id": brew_log.log_id, "message": "Brew log saved"}

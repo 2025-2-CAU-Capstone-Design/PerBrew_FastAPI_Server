@@ -75,6 +75,9 @@ class MachineBrewLog(BaseModel):
     machine_id: Optional[str] = None
     result: Optional[dict] = {}
 
+class MachineNicknameUpdate(BaseModel):
+    machine_id: str
+    nickname: Optional[str] = None
 
 # Response
 class BrewAccepted(BaseModel):

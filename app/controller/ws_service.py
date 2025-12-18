@@ -38,7 +38,7 @@ class ConnectionManager:
         await websocket.accept()
         if machine_id not in self.active_connections:
             self.active_connections[machine_id] = {"machine": None, "apps": []}
-        
+        print(f"[WS Service] Connecting app to machine: {machine_id} (User: {user_email})")
         # WebSocket 객체와 사용자 정보를 함께 저장
         connection_info = {"ws": websocket, "user": user_email}
         self.active_connections[machine_id]["apps"].append(connection_info)
@@ -100,9 +100,11 @@ class ConnectionManager:
     # [CHANGED] 저장 구조 변경에 따른 브로드캐스트 로직 수정
     async def broadcast_to_apps(self, machine_id: str, message: dict):
         if machine_id in self.active_connections:
+            print(len(self.active_connections[machine_id]["apps"]))
             # apps 리스트의 각 항목은 이제 dict임
             for conn in self.active_connections[machine_id]["apps"][:]:
                 app_ws = conn["ws"]
+                print(f"[WS Service] Broadcasting to app (User: {conn['user']}) for machine: {machine_id}")
                 try:
                     await app_ws.send_json(message)
                 except Exception as e:

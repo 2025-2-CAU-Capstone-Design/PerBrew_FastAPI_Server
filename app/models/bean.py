@@ -1,5 +1,5 @@
 # models/bean.py
-from sqlalchemy import Column, Integer, String, Text, Date, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Text, Date, DateTime, JSON, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
@@ -14,7 +14,8 @@ class CoffeeBean(Base):
     bean_name = Column(String(200), nullable=False)
     origin = Column(String(100), nullable=False)  # 원산지
     roast_level = Column(Integer, nullable=False)  # 1~5 (약→강)
-    
+    personal = Column(Boolean, default=False, nullable=False)  # 개인 취향 (예: "fruity", "chocolatey")
+
     # 상세 정보 (선택)
     roast_date = Column(Date, nullable=True)
     processing_method = Column(String(100), nullable=True)  # washed, natural, honey
