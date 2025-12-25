@@ -109,7 +109,7 @@ class RecipeController:
                     wait_time_s=step.get('wait_time_s'),
                     bloom_time_s=step.get('bloom_time_s'),
                     technique=step.get('technique'),
-                    seed=step.get('seed', False)
+                    #seed=step.get('seed', False)
                 )
                 db.add(new_step)
 

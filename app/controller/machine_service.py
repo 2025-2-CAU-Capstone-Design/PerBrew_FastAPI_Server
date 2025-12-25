@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from app.schemas.machine_schema import (
-    BrewRequest, MachineRegisterSchema, MachineBrewLog
+    BrewRequest, MachineRegisterSchema, MachineBrewLog, MachineNicknameUpdate
 )
 from app.models.machine import Machine
 from app.models.recipe import Recipe

@@ -76,7 +76,7 @@ def create_mock_recipes(db: Session):
             recipe_id=recipe.recipe_id,
             step_number=3,
             water_g=third_water,
-            pour_time_s=15.0,
+            pour_time_s=20.0,
             technique=TechniqueEnum.spiral_out,
         ),
     ]

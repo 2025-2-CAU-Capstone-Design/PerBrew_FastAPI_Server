@@ -72,16 +72,16 @@ def load_and_build_model(csv_path: str = "./app/services/coffee_data.csv") -> No
     _interpolators = {'tds': tds_interp, 'taste': taste_interp}
 
     # Pre-compute fine grid for fast recommendations
-    n_points = 21
+    n_points = 31
     fine_grind = np.linspace(75, 105, n_points)
-    fine_ratio = np.linspace(1, 3, n_points)
+    fine_ratio = np.linspace(1.0, 3.0, n_points)
     fine_temp = np.linspace(85, 95, n_points)
 
     G, R, T = np.meshgrid(fine_grind, fine_ratio, fine_temp, indexing='ij')
     points = np.column_stack([G.ravel(), R.ravel(), T.ravel()])
 
-    fine_tds = tds_interp(points).reshape((n_points, n_points, n_points))
-    fine_taste = taste_interp(points).reshape((n_points, n_points, n_points))
+    fine_tds = _interpolators['tds'](points).reshape((n_points, n_points, n_points))
+    fine_taste = _interpolators['taste'](points).reshape((n_points, n_points, n_points))
 
     _fine_grid = {
         'grind': fine_grind,
@@ -115,36 +115,51 @@ def estimate_outcome(grind: float, ratio: float, temp: float) -> dict:
 
 
 def recommend_next_recipe(
-    current_tds: float,
-    current_taste: float,
-    delta_tds: float = 0.0,
-    delta_taste: float = 0.0,
+    base_tds: float,
+    base_taste: float,
+    taste_fb: int,
+    tds_fb: int,
+    weight_fb: float = 4.0,   # 1~7
+    intensity_fb: float = 4.0, # 1~7
     top_k: int = 5
 ) -> list[dict]:
     """
-    Recommend next recipe(s) based on current result and desired improvement (deltas).
-    
-    Parameters:
-        current_tds   : measured TDS from latest brew
-        current_taste : measured taste score from latest brew
-        delta_tds     : desired change in TDS (e.g., +0.01 for more extraction)
-        delta_taste   : desired change in taste score (e.g., +1.0 to reduce sourness)
-        top_k         : how many alternative recipes to return
-    
-    Returns:
-        List of recommended recipes (best first)
+    로컬 코드 스타일의 추천: multiplicative goal 조정 + 가중치 error
     """
     if _fine_grid is None:
-        raise RuntimeError("Model not loaded. Call load_and_build_model() first.")
+        raise RuntimeError("Model not loaded.")
 
-    goal_tds = current_tds + delta_tds
-    goal_taste = current_taste + delta_taste
+    # 로컬 스타일 adjustment factor (지수 방식)
+    def adjustment_factor(likert, intensity):
+        deviation = likert - 4
+        if deviation == 0:
+            return 1.0
+        elif deviation < 0:  # too sour/weak → increase
+            return (0.94) ** (-deviation * intensity)
+        else:
+            return (1 / 0.9) ** (deviation * intensity)
 
-    fine_tds = _fine_grid['tds']
-    fine_taste = _fine_grid['taste']
-    error = np.abs((fine_tds - goal_tds) * (fine_taste - goal_taste))
+    # intensity와 weight를 스케일링 (로컬처럼 1-7 → factor)
+    intensity = intensity_fb / 4.0
+    weight_taste = weight_fb / 4.0
+    calc_w = weight_taste  # 로컬에서 사용된 방식
 
-    best_idxs = np.argsort(error.ravel())[:top_k * 3]  # get extra to dedupe
+    adj_taste = adjustment_factor(taste_fb, intensity)
+    adj_tds = adjustment_factor(tds_fb, intensity)
+
+    goal_taste = base_taste * (adj_taste ** (1 / calc_w))
+    goal_tds = base_tds * (adj_tds ** calc_w)
+
+    # 클리핑
+    goal_taste = np.clip(goal_taste, 1.0, 8.0)
+    goal_tds = np.clip(goal_tds, 0.3, 2.0)
+
+    # 로컬 스타일 error: 덧셈 + weight
+    diff_tds = np.abs(_fine_grid['tds'] - goal_tds)
+    diff_taste = np.abs(_fine_grid['taste'] - goal_taste)
+    error = diff_tds + (weight_taste * diff_taste)
+
+    best_idxs = np.argsort(error.ravel())[:top_k * 3]
 
     results = []
     seen = set()
@@ -158,19 +173,19 @@ def recommend_next_recipe(
             continue
         seen.add(key)
 
+        pred_tds = round(_fine_grid['tds'][i, j, k], 4)
+        pred_taste = round(_fine_grid['taste'][i, j, k], 2)
+
         results.append({
             'rank': len(results) + 1,
             'grind_level': g,
             'ratio': r,
-            'brew_ratio_1_to': round(1 / r, 2),  # coffee:water
+            'brew_ratio_1_to': round(1 / r, 2),
             'water_temp_c': t,
-            'predicted_tds': round(fine_tds[i, j, k], 4),
-            'predicted_taste': round(fine_taste[i, j, k], 2),
-            'expected_delta_tds': round(fine_tds[i, j, k] - current_tds, 4),
-            'expected_delta_taste': round(fine_taste[i, j, k] - current_taste, 2),
-            'error_score': round(error[i, j, k], 6),
+            'predicted_tds': pred_tds,
+            'predicted_taste': pred_taste,
             'goal_tds': round(goal_tds, 4),
-            'goal_taste': round(goal_taste, 2)
+            'goal_taste': round(goal_taste, 2),
         })
         if len(results) >= top_k:
             break
@@ -185,7 +200,7 @@ from app.models.recipe import Recipe  # Your SQLAlchemy Recipe model
 
 # Mapping from user's 1-7 feedback to desired delta
 # Center is 4 = "perfect", <4 = too much of the "left" side, >4 = too much of the "right" side
-
+"""
 FEEDBACK_MAPPING = {
     "taste": {
         # Very Acidic (1) → Very Nutty (7)
@@ -214,18 +229,19 @@ FEEDBACK_MAPPING = {
         "center": 4,
     }
 }
+"""
 
-
+"""
 def interpret_feedback(
     taste: int,
     tds: int,
     weight: int,
     intensity: int,
 ) -> tuple[float, float]:
-    """
-    Convert 1-7 feedback scores into desired deltas for TDS and taste.
-    Returns (desired_delta_tds, desired_delta_taste)
-    """
+    
+    #Convert 1-7 feedback scores into desired deltas for TDS and taste.
+    #Returns (desired_delta_tds, desired_delta_taste)
+    
     delta_tds = 0.0
     delta_taste = 0.0
 
@@ -241,75 +257,69 @@ def interpret_feedback(
     # We don't adjust TDS/taste directly from these
 
     return delta_tds, delta_taste
-
+"""
 
 def modify_recipe_based_on_feedback(
     original_recipe: Recipe,
-    taste: int,          # 1-7 (Acidic → Nutty)
-    tds: int,            # 1-7 (Low → High)
-    weight: int,         # 1-7 (perceived body/strength)
-    intensity: int,      # 1-7 (Weak → Strong)
-    top_k: int = 3
+    taste: int,          # 1-7 Acidic → Nutty
+    tds: int,            # 1-7 Low → High
+    weight: int = 4,     # 1-7 (body perception)
+    intensity: int = 4,  # 1-7 Weak → Strong
+    top_k: int = 5
 ) -> Dict[str, Any]:
     """
-    Generate a modified recipe based on user feedback.
-    
-    Args:
-        original_recipe: SQLAlchemy Recipe object (must have grind_level, ratio, water_temp_c)
-        taste, tds, weight, intensity: user ratings from 1 to 7
-        top_k: how many candidates to evaluate (we return the best one)
-    
-    Returns:
-        Dict with modified parameters ready to create a new Recipe
+    로컬 스타일로 완전히 통합된 수정 함수
     """
-    
-
-
-
+    # 현재 ratio 추출 (pouring_steps 기반 - 실제 앱에 맞게)
     current_grind = original_recipe.grind_level
-    current_ratio = 1
-    if len(original_recipe.pouring_steps) > 1:
-        current_ratio = original_recipe.pouring_steps[1].water_g / original_recipe.pouring_steps[2].water_g  # assuming pouring_steps[1] exists
     current_temp = original_recipe.water_temperature_c
 
-    # First, estimate current outcome using the model
+    # ratio: pouring_steps에서 추출하거나 기본값
+    current_ratio = 1.6667  # 기본값
+    if hasattr(original_recipe, 'pouring_steps') and len(original_recipe.pouring_steps) > 2:
+        # 예: pour2 / pour3 물 양 비율 등 - 실제 로직에 맞게 조정
+        try:
+            current_ratio = original_recipe.pouring_steps[1].water_g / original_recipe.pouring_steps[2].water_g
+        except:
+            pass
+
+    # 현재 예측
     current_pred = estimate_outcome(current_grind, current_ratio, current_temp)
-    current_tds = current_pred['predicted_tds']
-    current_taste = current_pred['predicted_taste']
+    base_tds = current_pred['predicted_tds']
+    base_taste = current_pred['predicted_taste']
 
-    # Interpret feedback into desired improvements
-    delta_tds, delta_taste = interpret_feedback(
-        taste=taste,
-        tds=tds,
-        weight=weight,
-        intensity=intensity,
-    )
-
-    # Get top recommendations aiming for improved TDS + taste
+    # 로컬 스타일 추천
     candidates = recommend_next_recipe(
-        current_tds=current_tds,
-        current_taste=current_taste,
-        delta_tds=delta_tds,
-        delta_taste=delta_taste,
+        base_tds=base_tds,
+        base_taste=base_taste,
+        taste_fb=taste,
+        tds_fb=tds,
+        weight_fb=weight,
+        intensity_fb=intensity,
         top_k=top_k
     )
 
     if not candidates:
-        raise RuntimeError("No suitable modified recipe found")
+        raise RuntimeError("No recommendation found")
 
-    # Pick the best candidate (rank 1)
     best = candidates[0]
 
-    # Build modified recipe parameters
+    # 로컬처럼 강도 피드백으로 ratio 미세 조정
+    strength_deviation = (intensity + weight) / 2 - 4
+    pour_adjust = strength_deviation * -0.08  # 강하면 ratio 낮춤 (더 진하게)
+    adjusted_ratio = max(1.0, min(3.0, best['ratio'] + pour_adjust))
+
     modified_params = {
-        "recipe_name": f"{original_recipe.recipe_name} (optimized)",
+        "recipe_name": f"{original_recipe.recipe_name} (optimized v2)",
         "grind_level": best['grind_level'],
-        "ratio": best['ratio'],  # water:coffee
+        "ratio": adjusted_ratio,
         "water_temperature_c": best['water_temp_c'],
-        "source": original_recipe.recipe_id,  # optional: track lineage
+        "source": original_recipe.recipe_id,
+        # 추가 정보 (디버깅용)
+        "predicted_tds": best['predicted_tds'],
+        "predicted_taste": best['predicted_taste'],
+        "goal_tds": best['goal_tds'],
+        "goal_taste": best['goal_taste']
     }
-
-
-
 
     return modified_params

@@ -29,6 +29,8 @@ def create_mock_beans(db: Session):
         print(f"ℹ️  Skipping bean creation - {existing} seed beans already exist")
         return db.query(CoffeeBean).filter(CoffeeBean.personal == False).order_by(CoffeeBean.bean_id).all()
 
+# 1 ~ 2개만
+
     bean_data = [
         ("Ethiopian Yirgacheffe", "Ethiopia", "Washed", "Floral, citrus, tea-like"),
         ("Kenyan AA", "Kenya", "Washed", "Bright acidity, blackcurrant, juicy"),
@@ -107,7 +109,7 @@ def create_mock_recipes(db: Session):
             recipe_name=recipe_name,
             user_id="test",
             bean_id=bean.bean_id,
-            seed=True,
+            seed=False,
             is_public=True,
             dose_g=16.0,
             water_temperature_c=temperature,

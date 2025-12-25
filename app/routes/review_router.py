@@ -31,9 +31,9 @@ def submit_review(
     ).first()
 
     # Save review data to brew log
-    brew_log.review_taste = ratio[review.taste]
-    brew_log.review_tds = ratio[review.tds]
-    brew_log.review_weight = ratio[review.weight]
+    brew_log.review_taste = review.taste
+    brew_log.review_tds = review.tds
+    brew_log.review_weight = review.weight
     brew_log.review_intensity = review.intensity
     brew_log.review_notes = review.notes
 
@@ -49,6 +49,11 @@ def submit_review(
     )
     pour_r = new_recipe_data['ratio']
     new_recipe_data.pop('ratio')
+    new_recipe_data.pop('predicted_tds')
+    new_recipe_data.pop('predicted_taste')
+    new_recipe_data.pop('goal_tds')
+    new_recipe_data.pop('goal_taste')
+
     # new_recipe_data.pop('recipe')
     new_recipe = Recipe(
         user_id="auto",
@@ -65,17 +70,17 @@ def submit_review(
     pouring_steps = [
         PouringStep(recipe_id=new_recipe.recipe_id, step_number=1, water_g=60.0, pour_time_s=20.0),
         PouringStep(
-            recipe_id=recipe.recipe_id,
+            recipe_id=new_recipe.recipe_id,
             step_number=2,
             water_g=200*pour_r/(pour_r+1),
             pour_time_s=20.0,
             wait_time_s=20.0,
         ),
         PouringStep(
-            recipe_id=recipe.recipe_id,
+            recipe_id=new_recipe.recipe_id,
             step_number=3,
             water_g=200/(pour_r+1),
-            pour_time_s=15.0,
+            pour_time_s=20.0,
         ),
     ]
     for step in pouring_steps:
